@@ -1,0 +1,21 @@
+{
+  "id": "iti-osisoft-pi-is-not-ethernet-ip",
+  "summary": "A real historian service on port 5450 whose frames open with two zero bytes, which the EtherNet/IP decoder read as the NOP command and accepted. A historian filed at the control level is a segmentation finding that never happened, so the frame is kept as a fixture",
+  "device": {
+    "source": "OSIsoft PI",
+    "description": "Historian service traffic on port 5450, recorded alongside an EtherNet/IP exercise",
+    "provenance": "captured",
+    "license": "CC-BY-4.0",
+    "references": [
+      "https://github.com/ITI/ICS-Security-Tools/blob/master/pcaps/openics/EIP-ViewDeviceStatus.pcap",
+      "https://github.com/ITI/ICS-Security-Tools"
+    ]
+  },
+  "port": 5450,
+  "transport": "tcp",
+  "response": "0000180001000000010000007b43f79f000000009d7dae4a00000000",
+  "expect": {
+    "protocol": "",
+    "verdict": "not-this-protocol"
+  }
+}

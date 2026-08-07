@@ -1,0 +1,30 @@
+{
+  "id": "iti-johnson-controls-bacnet-firmware-revision",
+  "summary": "The same real controller returning its firmware revision, the field every advisory version range is finally evaluated against, in UCS-2 and with a four part number that is not semver",
+  "device": {
+    "source": "Johnson Controls MS-NAE4510-2",
+    "description": "Metasys network automation engine, firmware 5.1.0.4400",
+    "provenance": "captured",
+    "license": "CC-BY-4.0",
+    "references": [
+      "https://github.com/ITI/ICS-Security-Tools/blob/master/pcaps/BACnet/bacnet_test.pcap",
+      "https://github.com/ITI/ICS-Security-Tools"
+    ]
+  },
+  "port": 47808,
+  "transport": "udp",
+  "response": "810a0029010030010c0c023fffff192c3e7515040035002e0031002e0030002e00340034003000303f",
+  "expect": {
+    "protocol": "bacnet",
+    "verdict": "decoded",
+    "fields": {
+      "bvll_function": "0x0a",
+      "firmware_revision": "5.1.0.4400"
+    },
+    "identity": {
+      "firmware": "5.1.0.4400",
+      "firmware_raw": "5.1.0.4400"
+    },
+    "role": "building-controller"
+  }
+}

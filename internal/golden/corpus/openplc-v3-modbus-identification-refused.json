@@ -1,0 +1,38 @@
+{
+  "id": "openplc-v3-modbus-identification-refused",
+  "summary": "A controller that refuses the identification function is still a controller, so the refusal has to be recorded as an observation rather than dropped as a failure.",
+  "device": {
+    "source": "openplc",
+    "description": "OpenPLC v3, the soft PLC used by GRFICS and by a great many teaching and test benches",
+    "provenance": "constructed",
+    "derivation": "processModbusMessage in modbus.cpp dispatches on the function code through a chain of comparisons. Read Device Identification, function 43 with MEI type 14, is not among them: the closest thing in the file is 0x43, which is 67 decimal and is OpenPLC's own debug read, a different function entirely. So the request falls through to the final branch and is answered by ModbusError with ERR_ILLEGAL_FUNCTION. ModbusError edits the request buffer in place, fixing the length field at three, setting the high bit of the function code and appending the error code.",
+    "references": [
+      "https://github.com/thiagoralves/OpenPLC_v3/blob/master/webserver/core/modbus.cpp"
+    ]
+  },
+  "port": 502,
+  "transport": "tcp",
+  "request": {
+    "builder": "modbus.read-device-identification",
+    "params": {
+      "read_code": "1",
+      "transaction_id": "1",
+      "unit_id": "1"
+    },
+    "bytes": "000100000005012b0e0100"
+  },
+  "response": "00010000000301ab01",
+  "expect": {
+    "protocol": "modbus",
+    "verdict": "device-error",
+    "error_detail": "modbus device returned error 1: illegal function",
+    "fields": {
+      "exception_code": "1",
+      "transaction_id": "1",
+      "unit_id": "1"
+    },
+    "notes": [
+      "device answered Modbus function 43 with exception 1 (illegal function), so it speaks Modbus but does not support device identification"
+    ]
+  }
+}

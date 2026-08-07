@@ -1,0 +1,37 @@
+{
+  "id": "conpot-default-bacnet-model-name",
+  "summary": "A ReadProperty acknowledgement whose value is a character string long enough to need the extended length form, which is the encoding most model names land in.",
+  "device": {
+    "source": "conpot",
+    "description": "Conpot running its default template, reporting the model name of an Alerton VAV controller",
+    "provenance": "constructed",
+    "derivation": "Built from the ReadProperty-ACK encoding of ASHRAE 135 clause 15.5, returning property 70, the model name, with the value from bacnet.xml. The string is 17 characters, so with its encoding octet the value runs to 18 and the application tag has to use the extended length form rather than pack the length into the tag. Conpot serves BACnet through bacpypes, whose encoder follows the standard, so the standard is the reference.",
+    "references": [
+      "https://github.com/mushorg/conpot/blob/master/conpot/templates/default/bacnet/bacnet.xml"
+    ]
+  },
+  "port": 47808,
+  "transport": "udp",
+  "request": {
+    "builder": "bacnet.read-property",
+    "params": {
+      "invoke_id": "1",
+      "property": "70"
+    },
+    "bytes": "810a001101040005010c0c023fffff1946"
+  },
+  "response": "810a0026010030010c0c02008d1119463e7512005641562d444420436f6e74726f6c6c65723f",
+  "expect": {
+    "protocol": "bacnet",
+    "verdict": "decoded",
+    "fields": {
+      "bvll_function": "0x0a",
+      "model_name": "VAV-DD Controller"
+    },
+    "identity": {
+      "product": "VAV-DD Controller",
+      "product_raw": "VAV-DD Controller"
+    },
+    "role": "building-controller"
+  }
+}

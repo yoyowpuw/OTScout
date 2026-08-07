@@ -1,0 +1,26 @@
+OTScout
+Copyright the OTScout authors
+
+This product includes software developed by the OTScout authors, licensed under
+the Apache License 2.0. See LICENSE.
+
+Third party material redistributed in this repository
+-----------------------------------------------------
+
+internal/golden/corpus holds recorded ICS protocol responses used to test the
+decoders without hardware. Some of those recordings were taken from published
+packet captures rather than produced here, and they are redistributed under the
+terms of the collections they came from.
+
+ICS-Security-Tools
+  https://github.com/ITI/ICS-Security-Tools
+  Licensed under Creative Commons Attribution 4.0 International (CC-BY-4.0).
+  Individual response frames were extracted from captures in the pcaps
+  directory of that repository. Every fixture derived from it names the file it
+  came from in its references and names CC-BY-4.0 in its license field, so the
+  attribution stays attached to the bytes it covers.
+
+Fixtures marked with the provenance "constructed" are not redistributed
+material. Their bytes are derived here from the behaviour of the open source
+emulators they cite, and internal/golden re-derives them on every test run
+rather than copying anything from those projects.

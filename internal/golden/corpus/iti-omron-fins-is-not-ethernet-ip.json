@@ -1,0 +1,21 @@
+{
+  "id": "iti-omron-fins-is-not-ethernet-ip",
+  "summary": "A real Omron FINS controller data read, carrying the model CP1L-EL20DR-D in ASCII. The EtherNet/IP decoder used to claim it. Declining a frame whose identity is plainly legible is the honest outcome while there is no FINS decoder, and a fixture is how that stays a stated gap instead of a wrong answer",
+  "device": {
+    "source": "Omron CP1L-EL20DR-D",
+    "description": "FINS/TCP controller data read reply naming the model and two version strings",
+    "provenance": "captured",
+    "license": "CC-BY-4.0",
+    "references": [
+      "https://github.com/ITI/ICS-Security-Tools/blob/master/pcaps/omron/omron_test.pcap",
+      "https://github.com/ITI/ICS-Security-Tools"
+    ]
+  },
+  "port": 9600,
+  "transport": "tcp",
+  "response": "c0000200630000c800ef050100004350314c2d454c323044522d440000002020202030312e3030000000000030312e3036000000000000000000000000000000000000000000000000010000000000000000000000000000000000010003000a172a1008000000000000",
+  "expect": {
+    "protocol": "",
+    "verdict": "not-this-protocol"
+  }
+}

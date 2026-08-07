@@ -1,0 +1,54 @@
+{
+  "id": "conpot-default-enip-list-identity",
+  "summary": "A CIP identity item where the order code is buried at the front of the product name, which is the only place Rockwell equipment ever puts it.",
+  "device": {
+    "source": "conpot",
+    "description": "Conpot running its default template, presenting itself as a ControlLogix 1756-L61",
+    "provenance": "constructed",
+    "derivation": "Conpot delegates its EtherNet/IP encapsulation to cpppo, so unlike the Modbus and S7 fixtures this frame is built from the encoding the EtherNet/IP specification defines rather than from the emulator's own code, carrying the field values of enip.xml: VendorId 1, DeviceType 14, ProductCode 90, SerialNumber 7079450 and the product name 1756-L61/B LOGIX5561. The template gives ProductRevision as the single number 2562, which fills the two octet revision field as major 2 and minor 10. The sender context is the one this build sends and the device echoes.",
+    "references": [
+      "https://github.com/mushorg/conpot/blob/master/conpot/templates/default/enip/enip.xml",
+      "https://github.com/mushorg/conpot/blob/master/conpot/protocols/enip/enip_server.py"
+    ]
+  },
+  "port": 44818,
+  "transport": "tcp",
+  "request": {
+    "builder": "enip.list-identity",
+    "params": {
+      "sender_context": "6f7473636f757431"
+    },
+    "bytes": "6300000000000000000000006f7473636f75743100000000"
+  },
+  "response": "63003c0000000000000000006f7473636f7574310000000001000c00360001000002af12c0a85f0b000000000000000001000e005a00020a60001a066c0014313735362d4c36312f42204c4f4749583535363103",
+  "expect": {
+    "protocol": "enip",
+    "verdict": "decoded",
+    "fields": {
+      "catalog_number_from_product_name": "1756-L61",
+      "device_state": "0x03",
+      "device_status": "0x0060",
+      "device_type": "14",
+      "device_type_name": "Programmable Logic Controller",
+      "encapsulation_protocol_version": "1",
+      "product_code": "90",
+      "product_name": "1756-L61/B LOGIX5561",
+      "reported_socket_address": "192.168.95.11:44818",
+      "revision": "2.10",
+      "serial_number": "006C061A",
+      "vendor_id": "1",
+      "vendor_name": "Rockwell Automation/Allen-Bradley"
+    },
+    "identity": {
+      "vendor": "Rockwell Automation/Allen-Bradley",
+      "vendor_raw": "Rockwell Automation/Allen-Bradley",
+      "product": "1756-L61/B LOGIX5561",
+      "product_raw": "1756-L61/B LOGIX5561",
+      "catalog_number": "1756-L61",
+      "firmware": "2.10",
+      "firmware_raw": "2.10",
+      "serial": "006C061A"
+    },
+    "role": "plc"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "conpot-default-bacnet-i-am",
+  "summary": "An I-Am names a device instance and a vendor number but no text at all, so it places a controller on the network without identifying the product.",
+  "device": {
+    "source": "conpot",
+    "description": "Conpot running its default template, announcing itself as Alerton device 36113",
+    "provenance": "constructed",
+    "derivation": "Built from the I-Am encoding of ASHRAE 135 clause 20, carrying the values of bacnet.xml: device_identifier 36113, max_apdu_length_accepted 1024, segmentation segmentedBoth and vendor_identifier 15. Conpot serves BACnet through bacpypes, whose encoder follows the standard, so the standard is the reference. The object identifier packs object type 8, the device object, into the top ten bits.",
+    "references": [
+      "https://github.com/mushorg/conpot/blob/master/conpot/templates/default/bacnet/bacnet.xml"
+    ]
+  },
+  "port": 47808,
+  "transport": "udp",
+  "request": {
+    "builder": "bacnet.who-is",
+    "bytes": "810b000c0120ffff00ff1008"
+  },
+  "response": "810b001401001000c402008d112204009100210f",
+  "expect": {
+    "protocol": "bacnet",
+    "verdict": "decoded",
+    "fields": {
+      "bvll_function": "0x0b",
+      "device_instance": "36113",
+      "vendor_identifier": "15"
+    },
+    "role": "building-controller"
+  }
+}

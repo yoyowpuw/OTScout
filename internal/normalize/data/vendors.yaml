@@ -1,0 +1,701 @@
+# Vendor alias table.
+#
+# ICS advisories and device banners spell the same company many different ways.
+# This table maps every spelling we have seen onto one canonical id, so that a
+# device reporting "Siemens AG" and an advisory saying "Siemens" resolve to the
+# same vendor.
+#
+# Adding a vendor or an alias is the easiest useful contribution to this project.
+# Rules:
+#   id              lowercase, hyphenated, stable. Never rename an existing id.
+#   display         the name as the vendor writes it, shown in the UI.
+#   aliases         lowercased spellings seen in advisories or on the wire. Do
+#                   not repeat the display name, it is matched automatically.
+#   version_scheme  which firmware comparator to use, see version.go. Omit for
+#                   the generic comparator.
+#   catalog_parsers order code parsers to try, see catalog.go.
+#
+# Companies that were split or acquired keep separate ids when they publish
+# separate advisories. Siemens and Siemens Energy are two entries on purpose:
+# collapsing them would attach one company's advisories to the other's devices.
+
+version: 1
+
+vendors:
+  - id: siemens
+    display: Siemens
+    aliases:
+      - siemens ag
+      - siemens industry
+      - siemens industry inc
+      - siemens healthineers
+      - siemens mobility
+    version_scheme: siemens
+    catalog_parsers: [siemens-mlfb]
+
+  - id: siemens-energy
+    display: Siemens Energy
+    aliases:
+      - siemens energy ag
+      - siemens gamesa
+      - siemens gamesa renewable energy
+
+  - id: ruggedcom
+    display: RUGGEDCOM
+    aliases:
+      - siemens ruggedcom
+      - ruggedcom inc
+    version_scheme: siemens
+
+  - id: schneider-electric
+    display: Schneider Electric
+    aliases:
+      - schneider
+      - schneider-electric
+      - schneider electric sa
+      - schneider electric software
+      - apc by schneider electric
+      - american power conversion
+      - modicon
+      - telemecanique
+      - square d
+      - invensys
+
+  - id: rockwell-automation
+    display: Rockwell Automation
+    aliases:
+      - rockwell
+      - rockwell automation inc
+      - allen-bradley
+      - allen bradley
+      - allen-bradley rockwell automation
+      - a-b
+    version_scheme: rockwell
+    catalog_parsers: [rockwell-catalog]
+
+  - id: abb
+    display: ABB
+    aliases:
+      - abb ltd
+      - abb inc
+      - abb group
+      - asea brown boveri
+      - baldor
+    version_scheme: abb
+
+  - id: hitachi-energy
+    display: Hitachi Energy
+    aliases:
+      - hitachi abb power grids
+      - abb power grids
+      - hitachi energy ltd
+    version_scheme: abb
+
+  # Acquired by ABB but still publishing its own advisories, so it keeps a
+  # separate id. Merging the two would attach ABB advisories to B&R devices.
+  - id: b-and-r
+    display: B&R Industrial Automation
+    aliases:
+      - b&r
+      - br automation
+      - bernecker + rainer
+      - bernecker and rainer
+
+  - id: mitsubishi-electric
+    display: Mitsubishi Electric
+    aliases:
+      - mitsubishi
+      - mitsubishi electric corporation
+      - melsec
+      - melsoft
+    catalog_parsers: [mitsubishi-catalog]
+
+  - id: omron
+    display: OMRON
+    aliases:
+      - omron corporation
+      - omron automation
+
+  - id: honeywell
+    display: Honeywell
+    aliases:
+      - honeywell international
+      - honeywell international inc
+      - honeywell process solutions
+      - tridium
+
+  - id: emerson
+    display: Emerson
+    aliases:
+      - emerson electric
+      - emerson electric co
+      - emerson process management
+      - fisher-rosemount
+      - fisher rosemount
+      - rosemount
+      - aspentech
+      - ovation
+
+  - id: yokogawa
+    display: Yokogawa
+    aliases:
+      - yokogawa electric
+      - yokogawa electric corporation
+
+  - id: ge
+    display: GE
+    aliases:
+      - general electric
+      - ge digital
+      - ge automation
+      - ge intelligent platforms
+      - ge fanuc
+      - emerson ge
+
+  - id: ge-vernova
+    display: GE Vernova
+    aliases:
+      - ge grid solutions
+      - ge renewable energy
+      - ge power
+      # CISA has published this misspelling in its own product tree, and an
+      # advisory nobody can match is worse than an alias table with a typo in it.
+      - ge veronva
+
+  - id: phoenix-contact
+    display: Phoenix Contact
+    aliases:
+      - phoenix contact gmbh
+      - phoenix contact gmbh & co kg
+      - phoenixcontact
+
+  - id: wago
+    display: WAGO
+    aliases:
+      - wago kontakttechnik
+      - wago gmbh
+
+  - id: beckhoff
+    display: Beckhoff Automation
+    aliases:
+      - beckhoff
+      - beckhoff automation gmbh
+      - twincat
+
+  - id: codesys
+    display: CODESYS
+    aliases:
+      - codesys gmbh
+      - 3s-smart software solutions
+      - 3s smart software solutions
+      - smart software solutions
+
+  - id: pilz
+    display: Pilz
+    aliases:
+      - pilz gmbh
+      - pilz gmbh & co kg
+
+  - id: sick
+    display: SICK AG
+    aliases:
+      - sick
+      - sick ag
+
+  - id: festo
+    display: Festo
+    aliases:
+      - festo se
+      - festo ag
+
+  - id: moxa
+    display: Moxa
+    aliases:
+      - moxa inc
+      - moxa technologies
+
+  - id: belden
+    display: Belden
+    aliases:
+      - hirschmann
+      - hirschmann automation and control
+      - garrettcom
+      - belden inc
+      - tofino
+
+  - id: red-lion
+    display: Red Lion Controls
+    aliases:
+      - red lion
+      - n-tron
+      - sixnet
+
+  - id: advantech
+    display: Advantech
+    aliases:
+      - advantech co
+      - advantech corporation
+
+  - id: delta-electronics
+    display: Delta Electronics
+    aliases:
+      - delta
+      - delta electronics inc
+      - deltaww
+
+  - id: weintek
+    display: Weintek
+    aliases:
+      - weintek labs
+      - easybuilder
+
+  - id: unitronics
+    display: Unitronics
+    aliases:
+      - unitronics ltd
+
+  - id: fuji-electric
+    display: Fuji Electric
+    aliases:
+      - fuji
+      - fuji electric co
+
+  - id: ls-electric
+    display: LS Electric
+    aliases:
+      - lsis
+      - ls industrial systems
+      - lg industrial systems
+
+  - id: keyence
+    display: KEYENCE
+    aliases:
+      - keyence corporation
+
+  - id: panasonic
+    display: Panasonic
+    aliases:
+      - panasonic corporation
+      - matsushita
+
+  - id: yaskawa
+    display: Yaskawa
+    aliases:
+      - yaskawa electric
+      - yaskawa electric corporation
+
+  - id: fanuc
+    display: FANUC
+    aliases:
+      - fanuc corporation
+      - fanuc america
+
+  - id: bosch-rexroth
+    display: Bosch Rexroth
+    aliases:
+      - rexroth
+      - bosch rexroth ag
+      - robert bosch
+
+  - id: sew-eurodrive
+    display: SEW-EURODRIVE
+    aliases:
+      - sew eurodrive
+      - sew
+
+  - id: lenze
+    display: Lenze
+    aliases:
+      - lenze se
+
+  - id: turck
+    display: Turck
+    aliases:
+      - hans turck
+      - turck inc
+
+  - id: ifm
+    display: ifm electronic
+    aliases:
+      - ifm
+      - ifm electronic gmbh
+
+  - id: pepperl-fuchs
+    display: Pepperl+Fuchs
+    aliases:
+      - pepperl fuchs
+      - pepperl+fuchs se
+      - comtrol
+
+  - id: balluff
+    display: Balluff
+    aliases:
+      - balluff gmbh
+
+  - id: aveva
+    display: AVEVA
+    aliases:
+      - wonderware
+      - aveva group
+      - indusoft
+      - intouch
+      - system platform
+
+  - id: osisoft
+    display: OSIsoft
+    aliases:
+      - osisoft llc
+      - pi system
+      - aveva pi
+
+  - id: ptc
+    display: PTC
+    aliases:
+      - kepware
+      - kepware technologies
+      - kepserverex
+      - thingworx
+
+  - id: inductive-automation
+    display: Inductive Automation
+    aliases:
+      - ignition
+      - inductive automation llc
+
+  - id: iconics
+    display: ICONICS
+    aliases:
+      - iconics inc
+      - genesis64
+
+  - id: myscada
+    display: mySCADA
+    aliases:
+      - myscada technologies
+      - mypro
+
+  - id: johnson-controls
+    display: Johnson Controls
+    aliases:
+      - johnson controls inc
+      - metasys
+      - jci
+      - sensormatic
+
+  - id: carrier
+    display: Carrier
+    aliases:
+      - carrier global
+      - automated logic
+      - lenel
+      - lenels2
+
+  - id: trane
+    display: Trane Technologies
+    aliases:
+      - trane
+      - trane inc
+
+  - id: distech-controls
+    display: Distech Controls
+    aliases:
+      - distech
+
+  - id: delta-controls
+    display: Delta Controls
+    aliases:
+      - delta controls inc
+
+  - id: eaton
+    display: Eaton
+    aliases:
+      - eaton corporation
+      - cutler-hammer
+      - tripp lite
+
+  - id: vertiv
+    display: Vertiv
+    aliases:
+      - liebert
+      - avocent
+      - emerson network power
+
+  - id: hms-networks
+    display: HMS Networks
+    aliases:
+      - hms
+      - anybus
+      - ixxat
+      - intesis
+
+  - id: ewon
+    display: Ewon
+    aliases:
+      - ewon sa
+      - hms ewon
+      - talk2m
+
+  - id: prosoft-technology
+    display: ProSoft Technology
+    aliases:
+      - prosoft
+
+  - id: softing
+    display: Softing
+    aliases:
+      - softing industrial automation
+      - softing ag
+
+  - id: triangle-microworks
+    display: Triangle MicroWorks
+    aliases:
+      - triangle microworks inc
+
+  - id: matrikon
+    display: Matrikon
+    aliases:
+      - matrikon opc
+
+  - id: wibu-systems
+    display: WIBU-SYSTEMS
+    aliases:
+      - wibu
+      - codemeter
+      - wibu systems ag
+
+  - id: sierra-wireless
+    display: Sierra Wireless
+    aliases:
+      - airlink
+      - semtech sierra wireless
+
+  - id: digi-international
+    display: Digi International
+    aliases:
+      - digi
+      - digi international inc
+
+  - id: lantronix
+    display: Lantronix
+    aliases:
+      - lantronix inc
+
+  - id: westermo
+    display: Westermo
+    aliases:
+      - westermo network technologies
+
+  - id: nari
+    display: NARI
+    aliases:
+      - nari technology
+      - nari-relays
+      - state grid nari
+
+  - id: alstom
+    display: Alstom
+    aliases:
+      - alstom grid
+
+  - id: sma-solar
+    display: SMA Solar Technology
+    aliases:
+      - sma
+      - sma solar
+      - sunny portal
+
+  - id: solaredge
+    display: SolarEdge
+    aliases:
+      - solaredge technologies
+
+  - id: sungrow
+    display: Sungrow
+    aliases:
+      - sungrow power supply
+
+  - id: growatt
+    display: Growatt
+    aliases:
+      - shenzhen growatt
+
+  - id: huawei
+    display: Huawei
+    aliases:
+      - huawei technologies
+      - fusionsolar
+
+  - id: baker-hughes
+    display: Baker Hughes
+    aliases:
+      - bently nevada
+      - ge bently nevada
+
+  - id: dataprobe
+    display: Dataprobe
+    aliases:
+      - dataprobe inc
+      - iboot
+
+  - id: hikvision
+    display: Hikvision
+    aliases:
+      - hangzhou hikvision
+
+  - id: dahua
+    display: Dahua
+    aliases:
+      - zhejiang dahua
+      - dahua technology
+
+  - id: opto-22
+    display: Opto 22
+    aliases:
+      - opto22
+      - groov
+
+  - id: automation-direct
+    display: AutomationDirect
+    aliases:
+      - automation direct
+      - koyo
+      - do-more
+
+  - id: crouzet
+    display: Crouzet
+    aliases:
+      - crouzet automatismes
+
+  - id: teltonika
+    display: Teltonika
+    aliases:
+      - teltonika networks
+
+  - id: secomea
+    display: Secomea
+    aliases:
+      - sitemanager
+      - gatemanager
+
+  # The entries below were added from the vendors that turned up unresolved in a
+  # real CISA corpus, worked through in order of how many products each accounted
+  # for. That is the only way this table gets better: measure the gap, then close
+  # the widest part of it.
+
+  - id: idec
+    display: IDEC
+    aliases:
+      - idec corporation
+      - idec izumi
+
+  - id: national-instruments
+    display: National Instruments
+    aliases:
+      - ni
+      - emerson national instruments
+      - labview
+
+  - id: axis-communications
+    display: Axis Communications
+    aliases:
+      - axis
+      - axis communications ab
+
+  - id: metz-connect
+    display: METZ CONNECT
+    aliases:
+      - metz connect gmbh
+      - metzconnect
+
+  - id: kieback-peter
+    display: Kieback and Peter
+    aliases:
+      - kieback & peter
+      - kieback und peter
+      - kieback&peter
+
+  - id: milesight
+    display: Milesight
+    aliases:
+      - milesight iot
+      - xiamen milesight
+
+  - id: daktronics
+    display: Daktronics
+    aliases:
+      - daktronics inc
+
+  - id: guralp
+    display: Guralp Systems
+    aliases:
+      - guralp
+      - guralp systems limited
+
+  - id: ceragon
+    display: Ceragon Networks
+    aliases:
+      - ceragon
+      - ceragon networks ltd
+
+  - id: kiloview
+    display: KiloView
+    aliases:
+      - kiloview electronics
+
+  - id: watchfire
+    display: Watchfire Signs
+    aliases:
+      - watchfire
+      - watchfire signs llc
+
+  - id: stonefly
+    display: StoneFly
+    aliases:
+      - stonefly inc
+
+  # German vendors that publish through CERT@VDE. Their advisories reach otscout
+  # only when that feed is asked for by name, but the alias is worth having either
+  # way, because the same names arrive from CISA as well.
+
+  # The umlaut spellings need no alias: vendor keys are folded to ASCII the way
+  # these companies spell themselves, so "Draeger" reaches the table as "draeger".
+  - id: draeger
+    display: Draeger
+    aliases:
+      - drager
+      - draegerwerk
+      - draeger medical
+
+  - id: tecson
+    display: TECSON
+    aliases:
+      - tecson gmbh
+      - tecson gmbh und co kg
+
+  - id: gok
+    display: GOK
+    aliases:
+      - gok regler und armaturen
+      - gok regler und armaturen gmbh und co kg
+
+  # These are general purpose IT vendors rather than ICS ones. They belong here
+  # because a plant network carries engineering workstations and switches too, and
+  # an advisory against one of those is as real as an advisory against a PLC.
+
+  - id: microsoft
+    display: Microsoft
+    aliases:
+      - microsoft corporation
+
+  - id: tp-link
+    display: TP-Link
+    aliases:
+      - tp-link systems inc
+      - tp-link technologies
+      - tplink
+
+  - id: qualcomm
+    display: Qualcomm
+    aliases:
+      - qualcomm incorporated
+      - qualcomm technologies

@@ -1,0 +1,45 @@
+{
+  "id": "conpot-default-modbus-on-the-template-port",
+  "summary": "The same reply on the port the template actually binds, which no decoder is registered for, so the content has to be what identifies the protocol.",
+  "device": {
+    "source": "conpot",
+    "description": "Conpot running its default template, reached on the unprivileged port it binds rather than on 502",
+    "provenance": "constructed",
+    "derivation": "Identical bytes to conpot-default-modbus-read-device-identification. Only the port differs, and it differs because modbus.xml binds 5020. An industrial service on an unregistered port is ordinary in a plant and absent from every lab, so the fallback that tries every decoder against a payload is worth a fixture of its own.",
+    "references": [
+      "https://github.com/mushorg/conpot/blob/master/conpot/templates/default/modbus/modbus.xml"
+    ]
+  },
+  "port": 5020,
+  "transport": "tcp",
+  "request": {
+    "builder": "modbus.read-device-identification",
+    "params": {
+      "read_code": "1",
+      "transaction_id": "1",
+      "unit_id": "1"
+    },
+    "bytes": "000100000005012b0e0100"
+  },
+  "response": "000100000022012b0e010100000300075369656d656e73010753494d41544943020653372d323030",
+  "expect": {
+    "protocol": "modbus",
+    "verdict": "decoded",
+    "fields": {
+      "conformity_level": "0x01",
+      "major_minor_revision": "S7-200",
+      "product_code": "SIMATIC",
+      "read_device_id_code": "1",
+      "transaction_id": "1",
+      "unit_id": "1",
+      "vendor_name": "Siemens"
+    },
+    "identity": {
+      "vendor": "Siemens",
+      "vendor_raw": "Siemens",
+      "catalog_number": "SIMATIC",
+      "firmware": "S7-200",
+      "firmware_raw": "S7-200"
+    }
+  }
+}

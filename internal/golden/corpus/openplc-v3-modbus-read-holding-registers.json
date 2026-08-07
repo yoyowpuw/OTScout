@@ -1,0 +1,28 @@
+{
+  "id": "openplc-v3-modbus-read-holding-registers",
+  "summary": "An ordinary process poll seen in a capture, which proves a Modbus server is there and must not be turned into an identity nobody reported.",
+  "device": {
+    "source": "openplc",
+    "description": "OpenPLC v3 answering a holding register poll of the kind an HMI sends continuously",
+    "provenance": "constructed",
+    "derivation": "ReadHoldingRegisters in modbus.cpp sets the length field to the data byte count plus three, writes the byte count after the function code and then the register values big endian. Four registers were requested, so the reply carries eight bytes of data. The values are process readings and mean nothing here; what the fixture is about is that the decoder recognises Modbus and stops, rather than inventing an identity out of a frame that carries none.",
+    "references": [
+      "https://github.com/thiagoralves/OpenPLC_v3/blob/master/webserver/core/modbus.cpp"
+    ]
+  },
+  "port": 502,
+  "transport": "tcp",
+  "response": "0ac40000000b01030800001f4000000bb8",
+  "expect": {
+    "protocol": "modbus",
+    "verdict": "decoded",
+    "fields": {
+      "function_code": "3",
+      "transaction_id": "2756",
+      "unit_id": "1"
+    },
+    "notes": [
+      "Modbus function 3 carries no identification data"
+    ]
+  }
+}

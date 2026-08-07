@@ -1,0 +1,35 @@
+{
+  "id": "iti-siemens-s7-300-order-number",
+  "summary": "A real Siemens S7-300 answering SZL 0x0011 with the order number 6ES7 315-2EH14-0AB0, which is the fixture the MLFB parser and the Siemens version comparator both rest on",
+  "device": {
+    "source": "Siemens SIMATIC S7-300 CPU 315-2 PN/DP",
+    "description": "S7-300 CPU reached over ISO-on-TCP by the snap7 client library",
+    "provenance": "captured",
+    "license": "CC-BY-4.0",
+    "references": [
+      "https://github.com/ITI/ICS-Security-Tools/blob/master/pcaps/s7/snap7_s300_everything.pcapng",
+      "https://github.com/ITI/ICS-Security-Tools"
+    ]
+  },
+  "port": 102,
+  "transport": "tcp",
+  "response": "0300009902f080320700000100000c007c000112081284010200000000ff09007800110000001c0004000136455337203331352d32454831342d304142302000c000030001000636455337203331352d32454831342d304142302000c0000300010007202020202020202020202020202020202020202000c0560302070081426f6f74204c6f61646572202020202020202020000041200909",
+  "expect": {
+    "protocol": "s7comm",
+    "verdict": "decoded",
+    "fields": {
+      "module_firmware_version": "V3.0.1",
+      "module_order_number": "6ES7 315-2EH14-0AB0",
+      "szl_id": "0x0011",
+      "szl_index": "0x0000"
+    },
+    "identity": {
+      "vendor": "Siemens",
+      "vendor_raw": "Siemens",
+      "catalog_number": "6ES7 315-2EH14-0AB0",
+      "firmware": "V3.0.1",
+      "firmware_raw": "V3.0.1"
+    },
+    "role": "plc"
+  }
+}

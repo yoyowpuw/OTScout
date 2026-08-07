@@ -1,0 +1,29 @@
+{
+  "id": "iti-schneider-modicon-umas-identification",
+  "summary": "A real Modicon Quantum answering Schneider's function 90, whose body spells out 140 CPU 311 10 in ASCII that otscout does not read. The fixture records the gap rather than the capability, so the day somebody implements UMAS the corpus shows exactly what changed",
+  "device": {
+    "source": "Schneider Electric Modicon Quantum 140 CPU 311 10",
+    "description": "Quantum CPU answering the vendor specific UMAS identification exchange on the Modbus port",
+    "provenance": "captured",
+    "license": "CC-BY-4.0",
+    "references": [
+      "https://github.com/ITI/ICS-Security-Tools/blob/master/pcaps/modicon/modicon_test.pcap",
+      "https://github.com/ITI/ICS-Security-Tools"
+    ]
+  },
+  "port": 502,
+  "transport": "tcp",
+  "response": "000000000032005a00fe10ff5a010100000070020000270009000800000000000e3134302043505520333131203130010101000000001100",
+  "expect": {
+    "protocol": "modbus",
+    "verdict": "decoded",
+    "fields": {
+      "function_code": "90",
+      "transaction_id": "0",
+      "unit_id": "0"
+    },
+    "notes": [
+      "Modbus function 90 carries no identification data"
+    ]
+  }
+}

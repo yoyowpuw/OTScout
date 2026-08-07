@@ -1,0 +1,49 @@
+{
+  "id": "conpot-default-s7comm-component-identification",
+  "summary": "A full SZL 0x001C read, where the module type name and the serial number are the fields worth keeping and the plant and copyright strings are not identity.",
+  "device": {
+    "source": "conpot",
+    "description": "Conpot running its default template, answering Read SZL as an IM151-8 PN/DP CPU",
+    "provenance": "constructed",
+    "derivation": "S7.request_ssl_28 in s7.py writes an SZL header declaring list 0x001C, a record length of 34 and a record count of 8, then eight records of a two byte data index followed by 32 bytes of null padded text. Each record uses a different mix of struct widths, 24s8s or 32s or 26s6s, but every combination totals 32. The strings come from the databus keys that s7comm.xml maps: SystemName, SystemDescription, FacilityName, Copyright, s7_id and s7_module_type, with the OEM id and the location left pointing at an empty key. s7_server.py wraps the result in an S7 user data message, a COTP data transfer and TPKT. The template binds port 10201 because the process is unprivileged; deployments front it on 102, which is the port recorded here.",
+    "references": [
+      "https://github.com/mushorg/conpot/blob/master/conpot/templates/default/s7comm/s7comm.xml",
+      "https://github.com/mushorg/conpot/blob/master/conpot/templates/default/template.xml",
+      "https://github.com/mushorg/conpot/blob/master/conpot/protocols/s7comm/s7.py"
+    ]
+  },
+  "port": 102,
+  "transport": "tcp",
+  "request": {
+    "builder": "s7comm.read-szl",
+    "params": {
+      "pdu_reference": "1",
+      "szl_id": "0x001C",
+      "szl_index": "0"
+    },
+    "bytes": "0300002102f080320700000001000800080001120411440100ff090004001c0000"
+  },
+  "response": "0300013502f0803207000000010008011c0001120812840101ff090118001c0000002200080001546563686e6f64726f6d6500000000000000000000000000000000000000000000025369656d656e732c2053494d415449432c2053372d323030000000000000000000034d6f7573657220466163746f727900000000000000000000000000000000000000044f726967696e616c205369656d656e732045717569706d656e74000000000000000538383131313232320000000000000000000000000000000000000000000000000007494d3135312d3820504e2f445020435055000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000000b0000000000000000000000000000000000000000000000000000000000000000",
+  "expect": {
+    "protocol": "s7comm",
+    "verdict": "decoded",
+    "fields": {
+      "automation_system_name": "Technodrome",
+      "copyright": "Original Siemens Equipment",
+      "module_name": "Siemens, SIMATIC, S7-200",
+      "module_serial_number": "88111222",
+      "module_type_name": "IM151-8 PN/DP CPU",
+      "plant_designation": "Mouser Factory",
+      "szl_id": "0x001C",
+      "szl_index": "0x0000"
+    },
+    "identity": {
+      "vendor": "Siemens",
+      "vendor_raw": "Siemens",
+      "product": "IM151-8 PN/DP CPU",
+      "product_raw": "IM151-8 PN/DP CPU",
+      "serial": "88111222"
+    },
+    "role": "plc"
+  }
+}

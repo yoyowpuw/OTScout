@@ -1,0 +1,46 @@
+{
+  "id": "iti-rockwell-1756-enbt-list-identity",
+  "summary": "A real Allen-Bradley 1756-ENBT/A answering List Identity, which is where the Rockwell catalog number parser meets a genuine product name string rather than one this project wrote",
+  "device": {
+    "source": "Allen-Bradley 1756-ENBT/A",
+    "description": "ControlLogix EtherNet/IP bridge module, firmware 4.3, serial 00524D8E",
+    "provenance": "captured",
+    "license": "CC-BY-4.0",
+    "references": [
+      "https://github.com/ITI/ICS-Security-Tools/blob/master/pcaps/EthernetIP/enip_test.pcap",
+      "https://github.com/ITI/ICS-Security-Tools"
+    ]
+  },
+  "port": 44818,
+  "transport": "tcp",
+  "response": "63003300000000000000000000000000c1debed10000000001000c002d0001000002af120a0101a4000000000000000001000c003a00040330008e4d52000b313735362d454e42542f4103",
+  "expect": {
+    "protocol": "enip",
+    "verdict": "decoded",
+    "fields": {
+      "catalog_number_from_product_name": "1756-ENBT",
+      "device_state": "0x03",
+      "device_status": "0x0030",
+      "device_type": "12",
+      "device_type_name": "Communications Adapter",
+      "encapsulation_protocol_version": "1",
+      "product_code": "58",
+      "product_name": "1756-ENBT/A",
+      "reported_socket_address": "10.1.1.164:44818",
+      "revision": "4.3",
+      "serial_number": "00524D8E",
+      "vendor_id": "1",
+      "vendor_name": "Rockwell Automation/Allen-Bradley"
+    },
+    "identity": {
+      "vendor": "Rockwell Automation/Allen-Bradley",
+      "vendor_raw": "Rockwell Automation/Allen-Bradley",
+      "product": "1756-ENBT/A",
+      "product_raw": "1756-ENBT/A",
+      "catalog_number": "1756-ENBT",
+      "firmware": "4.3",
+      "firmware_raw": "4.3",
+      "serial": "00524D8E"
+    }
+  }
+}

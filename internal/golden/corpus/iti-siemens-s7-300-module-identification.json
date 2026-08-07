@@ -1,0 +1,41 @@
+{
+  "id": "iti-siemens-s7-300-module-identification",
+  "summary": "The same real S7-300 answering SZL 0x001C, which carries the module type name, the serial number and the station name, so that identity assembled from a second read is exercised on real bytes",
+  "device": {
+    "source": "Siemens SIMATIC S7-300 CPU 315-2 PN/DP",
+    "description": "S7-300 CPU reached over ISO-on-TCP by the snap7 client library",
+    "provenance": "captured",
+    "license": "CC-BY-4.0",
+    "references": [
+      "https://github.com/ITI/ICS-Security-Tools/blob/master/pcaps/s7/snap7_s300_everything.pcapng",
+      "https://github.com/ITI/ICS-Security-Tools"
+    ]
+  },
+  "port": 102,
+  "transport": "tcp",
+  "response": "030000f702f080320700000200000c00da0001120812840102d5010000ff0900d6001c00000022000a000153373330302f45543230304d2073746174696f6e5f31000000000000000000000002504c435f310000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000000044f726967696e616c205369656d656e732045717569706d656e7400000000000000055320432d423155333933313432303131000000000000000000000000000000000007435055203331352d3220504e2f445000000000000000000000000000000000000008",
+  "expect": {
+    "protocol": "s7comm",
+    "verdict": "decoded",
+    "fields": {
+      "automation_system_name": "S7300/ET200M station_1",
+      "copyright": "Original Siemens Equipment",
+      "module_name": "PLC_1",
+      "module_serial_number": "S C-B1U393142011",
+      "module_type_name": "CPU 315-2 PN/DP",
+      "szl_id": "0x001C",
+      "szl_index": "0x0000"
+    },
+    "identity": {
+      "vendor": "Siemens",
+      "vendor_raw": "Siemens",
+      "product": "CPU 315-2 PN/DP",
+      "product_raw": "CPU 315-2 PN/DP",
+      "serial": "S C-B1U393142011"
+    },
+    "role": "plc",
+    "notes": [
+      "SZL record list ended after 6 of 10 declared records"
+    ]
+  }
+}

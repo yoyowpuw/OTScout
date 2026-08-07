@@ -1,0 +1,30 @@
+{
+  "id": "iti-johnson-controls-bacnet-model-name",
+  "summary": "A real Johnson Controls supervisory controller returning its model name as UCS-2, which is the character set the constructed BACnet fixtures do not use and the one most likely to be decoded into mojibake",
+  "device": {
+    "source": "Johnson Controls MS-NAE4510-2",
+    "description": "Metasys network automation engine, firmware 5.1.0.4400",
+    "provenance": "captured",
+    "license": "CC-BY-4.0",
+    "references": [
+      "https://github.com/ITI/ICS-Security-Tools/blob/master/pcaps/BACnet/bacnet_test.pcap",
+      "https://github.com/ITI/ICS-Security-Tools"
+    ]
+  },
+  "port": 47808,
+  "transport": "udp",
+  "response": "810a002d010030010c0c023fffff19463e751904004d0053002d004e004100450034003500310030002d00323f",
+  "expect": {
+    "protocol": "bacnet",
+    "verdict": "decoded",
+    "fields": {
+      "bvll_function": "0x0a",
+      "model_name": "MS-NAE4510-2"
+    },
+    "identity": {
+      "product": "MS-NAE4510-2",
+      "product_raw": "MS-NAE4510-2"
+    },
+    "role": "building-controller"
+  }
+}

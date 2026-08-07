@@ -1,0 +1,21 @@
+{
+  "id": "iti-niagara-fox-is-not-ethernet-ip",
+  "summary": "A real Niagara Fox greeting, which names its station, its Niagara version and its QNX host in plain text. The EtherNet/IP decoder used to claim it, because the ASCII fox reads as an encapsulation command, and a building automation station was filed as an industrial controller",
+  "device": {
+    "source": "Tridium Niagara AX station",
+    "description": "Fox protocol hello banner from a Niagara 3.5.41.1 station on QNX",
+    "provenance": "captured",
+    "license": "CC-BY-4.0",
+    "references": [
+      "https://github.com/ITI/ICS-Security-Tools/blob/master/pcaps/fox/fox_info.pcap",
+      "https://github.com/ITI/ICS-Security-Tools"
+    ]
+  },
+  "port": 1911,
+  "transport": "tcp",
+  "response": "666f7820612030202d3120666f782068656c6c6f0a7b0a666f782e76657273696f6e3d733a312e300a69643d693a320a686f73744e616d653d733a3139322e3136382e322e31350a686f7374416464726573733d733a3139322e3136382e322e31350a6170702e6e616d653d733a53746174696f6e0a6170702e76657273696f6e3d733a332e352e34312e310a766d2e6e616d653d733a4a390a766d2e76657273696f6e3d733a322e330a6f732e6e616d653d733a514e580a6f732e76657273696f6e3d733a362e332e320a73746174696f6e2e6e616d653d733a4c6567696f6e5f48515f56340a6c616e673d733a656e0a",
+  "expect": {
+    "protocol": "",
+    "verdict": "not-this-protocol"
+  }
+}

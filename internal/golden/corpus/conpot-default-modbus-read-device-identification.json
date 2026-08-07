@@ -1,0 +1,46 @@
+{
+  "id": "conpot-default-modbus-read-device-identification",
+  "summary": "A device that answers Read Device Identification but puts its model in the revision field, so the decoder must report what was sent rather than what would be convenient.",
+  "device": {
+    "source": "conpot",
+    "description": "Conpot running its default template, which presents itself as a Siemens S7-200",
+    "provenance": "constructed",
+    "derivation": "MBSlave._device_info in slave.py emits the MEI type, the requested device id, conformity level 1, no follow up, no next object, then objects 0, 1 and 2 taken from the device_info block of modbus.xml. handle_request prepends function code 0x2B and modbus_tk builds the MBAP header around it. The template names the objects VendorName, ProductCode and MajorMinorRevision but fills them with Siemens, SIMATIC and S7-200, so the third object carries a product line where the specification expects a version. The template binds port 5020 because the process is unprivileged; deployments front it on 502, which is the port recorded here.",
+    "references": [
+      "https://github.com/mushorg/conpot/blob/master/conpot/templates/default/modbus/modbus.xml",
+      "https://github.com/mushorg/conpot/blob/master/conpot/protocols/modbus/slave.py"
+    ]
+  },
+  "port": 502,
+  "transport": "tcp",
+  "request": {
+    "builder": "modbus.read-device-identification",
+    "params": {
+      "read_code": "1",
+      "transaction_id": "1",
+      "unit_id": "1"
+    },
+    "bytes": "000100000005012b0e0100"
+  },
+  "response": "000100000022012b0e010100000300075369656d656e73010753494d41544943020653372d323030",
+  "expect": {
+    "protocol": "modbus",
+    "verdict": "decoded",
+    "fields": {
+      "conformity_level": "0x01",
+      "major_minor_revision": "S7-200",
+      "product_code": "SIMATIC",
+      "read_device_id_code": "1",
+      "transaction_id": "1",
+      "unit_id": "1",
+      "vendor_name": "Siemens"
+    },
+    "identity": {
+      "vendor": "Siemens",
+      "vendor_raw": "Siemens",
+      "catalog_number": "SIMATIC",
+      "firmware": "S7-200",
+      "firmware_raw": "S7-200"
+    }
+  }
+}

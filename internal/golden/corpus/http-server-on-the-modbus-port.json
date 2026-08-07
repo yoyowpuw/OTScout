@@ -1,0 +1,20 @@
+{
+  "id": "http-server-on-the-modbus-port",
+  "summary": "Something that is not Modbus, on the Modbus port, must be declined rather than parsed into a device that does not exist.",
+  "device": {
+    "source": "not an industrial device",
+    "description": "A web server reachable on port 502, which happens wherever port forwarding or a repurposed appliance is involved",
+    "provenance": "constructed",
+    "derivation": "The literal ASCII of a minimal HTTP response. Its first two octets land where Modbus keeps its protocol identifier, and the letters TP are not zero, which is what the decoder rejects it on. The fixture exists because a decoder chosen by port number is a guess, and a guess that cannot say no produces inventory entries for devices nobody owns.",
+    "references": [
+      "https://www.rfc-editor.org/rfc/rfc9112"
+    ]
+  },
+  "port": 502,
+  "transport": "tcp",
+  "response": "485454502f312e3120323030204f4b0d0a5365727665723a206c696768747470642f312e342e33350d0a436f6e74656e742d4c656e6774683a20300d0a0d0a",
+  "expect": {
+    "protocol": "",
+    "verdict": "not-this-protocol"
+  }
+}

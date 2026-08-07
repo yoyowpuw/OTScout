@@ -1,0 +1,35 @@
+{
+  "id": "conpot-default-s7comm-connection-confirm",
+  "summary": "Accepting an ISO-on-TCP connection is a fingerprint before any S7 message is exchanged, and a device that goes no further still belongs in the inventory.",
+  "device": {
+    "source": "conpot",
+    "description": "Conpot running its default template, confirming a COTP connection at rack 0 slot 2",
+    "provenance": "constructed",
+    "derivation": "COTP_ConnectionConfirm.assemble in cotp.py packs the two references, an option field and the two TSAP parameters. s7_server.py calls it with the references of the request swapped and both TSAPs echoed. The confirm carries no TPDU size parameter even though the request does, which is a quirk of that implementation rather than of RFC 1006. The request here is the one this build sends to rack 0 slot 2, the default for the S7-300 and S7-400.",
+    "references": [
+      "https://github.com/mushorg/conpot/blob/master/conpot/protocols/s7comm/cotp.py",
+      "https://github.com/mushorg/conpot/blob/master/conpot/protocols/s7comm/s7_server.py"
+    ]
+  },
+  "port": 102,
+  "transport": "tcp",
+  "request": {
+    "builder": "s7comm.connection-request",
+    "params": {
+      "dest_tsap": "0x0102",
+      "source_tsap": "0x0100"
+    },
+    "bytes": "0300001611e00000000100c0010ac1020100c2020102"
+  },
+  "response": "030000130ed00001000000c1020100c2020102",
+  "expect": {
+    "protocol": "s7comm",
+    "verdict": "decoded",
+    "fields": {
+      "cotp_response": "connection confirm"
+    },
+    "notes": [
+      "device accepted an ISO-on-TCP connection, which indicates an S7 family controller"
+    ]
+  }
+}

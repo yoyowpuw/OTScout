@@ -1,0 +1,526 @@
+# Product family table.
+#
+# Advisories name a product family, while a device on the wire usually reports a
+# model. An advisory says "SIMATIC S7-1200 CPU family" and the PLC says
+# "CPU 1214C". This table connects the two so the matcher can see that they are
+# the same thing.
+#
+# Fields:
+#   id       lowercase, hyphenated, stable. Never rename an existing id.
+#   vendor   canonical vendor id from vendors.yaml.
+#   display  the family name as the vendor writes it.
+#   aliases  other spellings of the family, lowercased. Matching is token based,
+#            so "s7 1200" also covers "S7-1200" and "S7_1200".
+#   models   specific model designations that belong to this family. A device
+#            reporting one of these resolves to the family.
+#
+# Adding a family is a small, self contained pull request. Please add a case to
+# product_test.go alongside it.
+
+version: 1
+
+families:
+  - id: simatic-s7-1200
+    vendor: siemens
+    display: SIMATIC S7-1200
+    aliases: [s7 1200, s71200, simatic s7 1200]
+    models: [cpu 1211c, cpu 1212c, cpu 1214c, cpu 1215c, cpu 1217c]
+
+  - id: simatic-s7-1500
+    vendor: siemens
+    display: SIMATIC S7-1500
+    aliases: [s7 1500, s71500, simatic s7 1500]
+    models: [cpu 1511, cpu 1512, cpu 1513, cpu 1514, cpu 1515, cpu 1516, cpu 1517, cpu 1518, cpu 1510sp, cpu 1512sp]
+
+  - id: simatic-s7-300
+    vendor: siemens
+    display: SIMATIC S7-300
+    aliases: [s7 300, s7300, simatic s7 300]
+    models: [cpu 312, cpu 313, cpu 314, cpu 315, cpu 316, cpu 317, cpu 318]
+
+  - id: simatic-s7-400
+    vendor: siemens
+    display: SIMATIC S7-400
+    aliases: [s7 400, s7400, simatic s7 400]
+    models: [cpu 412, cpu 413, cpu 414, cpu 416, cpu 417]
+
+  - id: simatic-s7-200-smart
+    vendor: siemens
+    display: SIMATIC S7-200 SMART
+    aliases: [s7 200 smart, s7200 smart, s7 200, s7200]
+
+  - id: simatic-et-200
+    vendor: siemens
+    display: SIMATIC ET 200
+    aliases: [et 200, et200, et 200sp, et200sp, et 200mp, et200s, et 200pro, et200pro]
+    # The interface module designations are listed in full as well as by series.
+    # An ET 200 station reports itself as "IM151-8 PN/DP CPU" and never mentions
+    # ET 200 at all, so the series entries alone leave the commonest spelling of
+    # the commonest distributed IO family in Siemens plants unresolved.
+    models:
+      [
+        im 151,
+        im151-1,
+        im151-3,
+        im151-7,
+        im151-8,
+        im151-8f,
+        im 153,
+        im153-1,
+        im153-2,
+        im153-4,
+        im 154,
+        im154-8,
+        im 155,
+        im155-5,
+        im155-6,
+      ]
+
+  - id: simatic-wincc
+    vendor: siemens
+    display: SIMATIC WinCC
+    aliases: [wincc, wincc oa, wincc open architecture, wincc runtime, wincc professional]
+
+  - id: simatic-pcs-7
+    vendor: siemens
+    display: SIMATIC PCS 7
+    aliases: [pcs 7, pcs7]
+
+  - id: simatic-step-7
+    vendor: siemens
+    display: SIMATIC STEP 7
+    aliases: [step 7, step7, tia portal, totally integrated automation portal]
+
+  - id: simatic-hmi-panel
+    vendor: siemens
+    display: SIMATIC HMI Panel
+    aliases: [simatic hmi, comfort panel, basic panel, ktp, tp700, tp900, tp1200, tp1500]
+
+  - id: scalance
+    vendor: siemens
+    display: SCALANCE
+    aliases: [scalance x, scalance w, scalance s, scalance m, scalance xb, scalance xc]
+
+  - id: sinamics
+    vendor: siemens
+    display: SINAMICS
+    aliases: [sinamics s120, sinamics g120, sinamics v20, sinamics dcm]
+
+  - id: logo
+    vendor: siemens
+    display: LOGO!
+    aliases: ["logo", "logo 8", "logo8"]
+
+  - id: ruggedcom-ros
+    vendor: ruggedcom
+    display: RUGGEDCOM ROS
+    aliases: [ros, ruggedcom rox, rox ii]
+    models: [rsg2100, rsg2288, rs900, rsg920p, rx1500, rx1400, rx5000]
+
+  - id: modicon-m580
+    vendor: schneider-electric
+    display: Modicon M580
+    aliases: [m580, modicon m 580, bmep58, bme p58]
+
+  - id: modicon-m340
+    vendor: schneider-electric
+    display: Modicon M340
+    aliases: [m340, bmxp34, bmx p34]
+
+  - id: modicon-m221
+    vendor: schneider-electric
+    display: Modicon M221
+    aliases: [m221, tm221]
+
+  - id: modicon-m251
+    vendor: schneider-electric
+    display: Modicon M251
+    aliases: [m251, tm251]
+
+  - id: modicon-m262
+    vendor: schneider-electric
+    display: Modicon M262
+    aliases: [m262, tm262]
+
+  - id: modicon-quantum
+    vendor: schneider-electric
+    display: Modicon Quantum
+    aliases: [quantum, 140cpu, 140 cpu]
+
+  - id: modicon-premium
+    vendor: schneider-electric
+    display: Modicon Premium
+    aliases: [premium, tsxp57, tsx p57]
+
+  - id: ecostruxure-control-expert
+    vendor: schneider-electric
+    display: EcoStruxure Control Expert
+    aliases: [control expert, unity pro, ecostruxure control expert]
+
+  - id: harmony-hmi
+    vendor: schneider-electric
+    display: Harmony HMI
+    aliases: [magelis, harmony gto, harmony gtu, hmigto, hmistu, vijeo designer]
+
+  - id: geo-scada
+    vendor: schneider-electric
+    display: EcoStruxure Geo SCADA Expert
+    aliases: [geo scada, clearscada, geoscada]
+
+  - id: altivar
+    vendor: schneider-electric
+    display: Altivar
+    aliases: [altivar 320, altivar 630, altivar 900, atv320, atv630]
+
+  - id: controllogix-5580
+    vendor: rockwell-automation
+    display: ControlLogix 5580
+    aliases: [controllogix 5580, 1756 l8, logix 5580]
+
+  - id: controllogix-5570
+    vendor: rockwell-automation
+    display: ControlLogix 5570
+    aliases: [controllogix 5570, 1756 l7, logix 5570]
+
+  - id: controllogix-5560
+    vendor: rockwell-automation
+    display: ControlLogix 5560
+    aliases: [controllogix 5560, 1756 l6, logix 5560]
+
+  - id: compactlogix-5380
+    vendor: rockwell-automation
+    display: CompactLogix 5380
+    aliases: [compactlogix 5380, 5069 l3, compact 5000]
+
+  - id: compactlogix-5370
+    vendor: rockwell-automation
+    display: CompactLogix 5370
+    aliases: [compactlogix 5370, 1769 l3]
+
+  - id: micrologix
+    vendor: rockwell-automation
+    display: MicroLogix
+    aliases: [micrologix 1100, micrologix 1400, micrologix 1200, micrologix 1500]
+
+  - id: panelview-plus
+    vendor: rockwell-automation
+    display: PanelView Plus
+    aliases: [panelview plus, panelview plus 7, panelview plus 6, 2711p]
+
+  - id: factorytalk-view
+    vendor: rockwell-automation
+    display: FactoryTalk View
+    aliases: [factorytalk view, factorytalk view se, factorytalk view me, rsview]
+
+  - id: studio-5000
+    vendor: rockwell-automation
+    display: Studio 5000
+    aliases: [studio 5000, studio5000, rslogix 5000, logix designer]
+
+  - id: stratix
+    vendor: rockwell-automation
+    display: Stratix
+    aliases: [stratix 5700, stratix 8000, stratix 5400, stratix 5800]
+
+  - id: powerflex
+    vendor: rockwell-automation
+    display: PowerFlex
+    aliases: [powerflex 525, powerflex 753, powerflex 755, powerflex 6000]
+
+  - id: abb-ac500
+    vendor: abb
+    display: AC500
+    aliases: [ac500, ac500 eco, pm5, pm55, pm56, pm57, pm58, pm59, pm590, pm591]
+
+  - id: abb-system-800xa
+    vendor: abb
+    display: System 800xA
+    aliases: [800xa, system 800xa, ac800m, ac 800m]
+
+  - id: hitachi-foxman-un
+    vendor: hitachi-energy
+    display: FOXMAN-UN
+    aliases: [foxman un, foxman]
+
+  - id: hitachi-microscada
+    vendor: hitachi-energy
+    display: MicroSCADA
+    aliases: [microscada, microscada pro, microscada x, sys600]
+
+  - id: hitachi-rtu500
+    vendor: hitachi-energy
+    display: RTU500
+    aliases: [rtu500, rtu 500, rtu520, rtu540, rtu560]
+
+  - id: hitachi-relion
+    vendor: hitachi-energy
+    display: Relion
+    aliases: [relion, ret670, red670, rel670, ref615, ret615]
+
+  - id: melsec-iq-r
+    vendor: mitsubishi-electric
+    display: MELSEC iQ-R
+    aliases: [melsec iq r, iq r, iqr]
+    models: [r04cpu, r08cpu, r16cpu, r32cpu, r120cpu]
+
+  - id: melsec-q
+    vendor: mitsubishi-electric
+    display: MELSEC-Q
+    aliases: [melsec q, q series]
+    models: [q03udvcpu, q04udvcpu, q06udvcpu, q13udvcpu, q26udvcpu]
+
+  - id: melsec-iq-f
+    vendor: mitsubishi-electric
+    display: MELSEC iQ-F
+    aliases: [melsec iq f, iq f, fx5]
+    models: [fx5u, fx5uc, fx5s]
+
+  - id: got2000
+    vendor: mitsubishi-electric
+    display: GOT2000
+    aliases: [got2000, got 2000, gt27, gt25, gt23]
+
+  - id: omron-nj-nx
+    vendor: omron
+    display: NJ/NX Series
+    aliases: [nj series, nx series, sysmac nj, sysmac nx, nx102, nj501, nj301]
+
+  - id: omron-cj2
+    vendor: omron
+    display: CJ2 Series
+    aliases: [cj2m, cj2h, cj1m, cj1h]
+
+  - id: omron-cp1
+    vendor: omron
+    display: CP1 Series
+    aliases: [cp1l, cp1h, cp1e, cp2e]
+
+  - id: emerson-deltav
+    vendor: emerson
+    display: DeltaV
+    aliases: [deltav, delta v]
+
+  - id: emerson-ovation
+    vendor: emerson
+    display: Ovation
+    aliases: [ovation]
+
+  - id: pacsystems-rx3i
+    vendor: emerson
+    display: PACSystems RX3i
+    aliases: [rx3i, pacsystems rx3i, ic695]
+
+  - id: pacsystems-rx7i
+    vendor: emerson
+    display: PACSystems RX7i
+    aliases: [rx7i, pacsystems rx7i, ic698]
+
+  - id: proficy-ifix
+    vendor: ge
+    display: Proficy iFIX
+    aliases: [ifix, proficy ifix]
+
+  - id: proficy-cimplicity
+    vendor: ge
+    display: Proficy CIMPLICITY
+    aliases: [cimplicity, proficy cimplicity]
+
+  - id: honeywell-experion
+    vendor: honeywell
+    display: Experion PKS
+    aliases: [experion, experion pks, experion lx]
+
+  - id: honeywell-controledge
+    vendor: honeywell
+    display: ControlEdge
+    aliases: [controledge, control edge, controledge upc, controledge rtu]
+
+  - id: yokogawa-centum
+    vendor: yokogawa
+    display: CENTUM VP
+    aliases: [centum, centum vp, centum cs 3000]
+
+  - id: yokogawa-stardom
+    vendor: yokogawa
+    display: STARDOM
+    aliases: [stardom, fcn, fcj]
+
+  - id: wago-pfc
+    vendor: wago
+    display: WAGO PFC Controller
+    aliases: [pfc100, pfc200, "750 8100", "750 8202", "750 8207"]
+
+  - id: beckhoff-twincat
+    vendor: beckhoff
+    display: TwinCAT
+    aliases: [twincat, twincat 2, twincat 3]
+
+  - id: beckhoff-cx
+    vendor: beckhoff
+    display: CX Embedded PC
+    aliases: [cx5010, cx5020, cx5130, cx8090, cx9020, cx2020]
+
+  - id: phoenix-plcnext
+    vendor: phoenix-contact
+    display: PLCnext
+    aliases: [plcnext, plc next, axc f 2152, axc f 1152, axc f 3152]
+
+  - id: phoenix-ilc
+    vendor: phoenix-contact
+    display: ILC Controller
+    aliases: [ilc 131, ilc 151, ilc 171, ilc 191, ilc 350, ilc 390]
+
+  - id: phoenix-fl-switch
+    vendor: phoenix-contact
+    display: FL SWITCH
+    aliases: [fl switch, fl comserver, fl mguard, mguard]
+
+  - id: moxa-eds
+    vendor: moxa
+    display: EDS Series Switch
+    aliases: [eds 405a, eds 408a, eds 510e, eds 516a, eds g508e, eds 4008]
+
+  - id: moxa-nport
+    vendor: moxa
+    display: NPort
+    aliases: [nport, nport 5100, nport 5200, nport 6000, nport ia]
+
+  - id: moxa-mgate
+    vendor: moxa
+    display: MGate
+    aliases: [mgate, mgate mb3180, mgate mb3480, mgate 5105]
+
+  - id: moxa-iologik
+    vendor: moxa
+    display: ioLogik
+    aliases: [iologik, iologik e1200, iologik e2200, iologik e4200]
+
+  - id: codesys-control
+    vendor: codesys
+    display: CODESYS Control
+    aliases: [codesys control, codesys runtime, codesys control runtime system]
+
+  - id: codesys-development-system
+    vendor: codesys
+    display: CODESYS Development System
+    aliases: [codesys development system, codesys v3, codesys v2]
+
+  - id: aveva-intouch
+    vendor: aveva
+    display: AVEVA InTouch
+    aliases: [intouch, wonderware intouch, intouch hmi]
+
+  - id: aveva-system-platform
+    vendor: aveva
+    display: AVEVA System Platform
+    aliases: [system platform, wonderware system platform, archestra]
+
+  - id: osisoft-pi-server
+    vendor: osisoft
+    display: PI Server
+    aliases: [pi server, pi data archive, pi af, pi asset framework]
+
+  - id: kepserverex
+    vendor: ptc
+    display: KEPServerEX
+    aliases: [kepserverex, kepserver, kepware kepserverex, thingworx kepware server]
+
+  - id: ignition
+    vendor: inductive-automation
+    display: Ignition
+    aliases: [ignition, ignition gateway, ignition perspective]
+
+  - id: iconics-genesis64
+    vendor: iconics
+    display: GENESIS64
+    aliases: [genesis64, genesis32, hyper historian]
+
+  - id: metasys
+    vendor: johnson-controls
+    display: Metasys
+    aliases: [metasys, nae, ncm, adx, metasys nae]
+
+  - id: niagara-framework
+    vendor: honeywell
+    display: Niagara Framework
+    aliases: [niagara, niagara 4, niagara ax, jace, tridium niagara]
+
+  - id: automated-logic-webctrl
+    vendor: carrier
+    display: WebCTRL
+    aliases: [webctrl, automated logic webctrl]
+
+  - id: advantech-webaccess
+    vendor: advantech
+    display: WebAccess
+    aliases: [webaccess, webaccess scada, webaccess hmi]
+
+  - id: advantech-adam
+    vendor: advantech
+    display: ADAM Module
+    aliases: [adam 6000, adam 6017, adam 6050, adam 6060, adam 4000]
+
+  - id: advantech-eki
+    vendor: advantech
+    display: EKI Switch
+    aliases: [eki 1521, eki 1522, eki 5525, eki 7708, eki 9312]
+
+  - id: delta-dvp
+    vendor: delta-electronics
+    display: DVP Series
+    aliases: [dvp, dvp es2, dvp ss2, dvp sx2, dvp 12se]
+
+  - id: delta-as-series
+    vendor: delta-electronics
+    display: AS Series
+    aliases: [as series, as228, as332, as324]
+
+  - id: delta-diaenergie
+    vendor: delta-electronics
+    display: DIAEnergie
+    aliases: [diaenergie, dia energie]
+
+  - id: unitronics-vision
+    vendor: unitronics
+    display: Vision Series
+    aliases: [vision v130, vision v350, vision v570, v1040, v1210]
+
+  - id: unitronics-unistream
+    vendor: unitronics
+    display: UniStream
+    aliases: [unistream, unilogic]
+
+  - id: weintek-cmt
+    vendor: weintek
+    display: cMT Series
+    aliases: [cmt3072, cmt3151, cmt svr, cmt gateway, easybuilder pro]
+
+  - id: ewon-flexy
+    vendor: ewon
+    display: Ewon Flexy
+    aliases: [flexy, ewon flexy, ewon cosy, cosy 131, cosy+]
+
+  - id: anybus-communicator
+    vendor: hms-networks
+    display: Anybus Communicator
+    aliases: [anybus communicator, anybus x gateway, anybus gateway]
+
+  - id: myscada-mypro
+    vendor: myscada
+    display: mySCADA myPRO
+    aliases: [mypro, myscada mypro, mypro manager]
+
+  - id: opto22-groov
+    vendor: opto-22
+    display: groov EPIC
+    aliases: [groov epic, groov rio, groov, snap pac]
+
+  - id: fuji-monitouch
+    vendor: fuji-electric
+    display: MONITOUCH
+    aliases: [monitouch, v9 series, v8 series, tellus]
+
+  - id: ls-xgt
+    vendor: ls-electric
+    display: XGT Series
+    aliases: [xgt, xgb, xgk, xgi, xg5000]

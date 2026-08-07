@@ -1,0 +1,21 @@
+{
+  "id": "iti-hart-ip-is-not-modbus",
+  "summary": "A real HART-IP gateway response, which the Modbus decoder used to accept because HART puts zeroes where the MBAP protocol id belongs. It was inventoried as a Modbus device answering function 13, and the fixture exists so it cannot be again",
+  "device": {
+    "source": "HART-IP gateway",
+    "description": "HART-IP response frame, version 1, on the port HART-IP is registered for",
+    "provenance": "captured",
+    "license": "CC-BY-4.0",
+    "references": [
+      "https://github.com/ITI/ICS-Security-Tools/blob/master/pcaps/hart/hart_ip.pcap",
+      "https://github.com/ITI/ICS-Security-Tools"
+    ]
+  },
+  "port": 5094,
+  "transport": "tcp",
+  "response": "010100000002000d010000ea60",
+  "expect": {
+    "protocol": "",
+    "verdict": "not-this-protocol"
+  }
+}
