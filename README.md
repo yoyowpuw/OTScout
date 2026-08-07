@@ -41,18 +41,26 @@ Active scanning in an OT network can disturb a running process. OTScout treats
 that as a design constraint rather than a disclaimer.
 
 - The passive path is the default and sends no packets at all.
-- Active probes are read-only. The template schema cannot express a write, a
-  reset or a stop, so no template can be authored that changes device state.
-- Probing is sequential, one host and one connection at a time, with a delay
-  between packets and a global packet rate ceiling.
-- `--dry-run` prints a hex dump of every byte that would be sent, before
-  anything is sent.
+- Active probes are read-only, and not by policy. Requests come from a closed set
+  of builders, none of which encodes a write, a reset or a stop, and a test fails
+  when that set changes without review. There is nothing for a hostile template
+  to call.
+- Probing is sequential: one host, one connection and one packet at a time. That
+  is not a setting, and there is no flag to raise it.
+- Pacing defaults to a 250ms gap and four packets per second. Every limit can be
+  tightened and none can be meaningfully loosened.
+- `--dry-run` prints a hex dump of every byte that would be sent, before anything
+  is sent, in a form meant for a change request.
 - Each template carries a risk rating, and anything above `safe` requires an
   explicit `--allow-risk` flag.
-- Every packet sent is written to an audit log suitable for change management
-  paperwork.
+- Known fragile equipment is skipped by name, and safety instrumented systems are
+  never probed at all.
+- The run stops on its own if devices start failing to answer.
+- An active run will not start without `--reason` and `--audit`, and every
+  packet, skip and refusal lands in that file as it happens.
 
-See [docs/SAFETY.md](docs/SAFETY.md) for the full model.
+Run `otscout safety` to print the limits and the deny list without planning a
+scan, and see [docs/SAFETY.md](docs/SAFETY.md) for the full model.
 
 ## Install
 
@@ -193,12 +201,37 @@ stops an engineer redoing it by hand.
 
 ## Active discovery, when you decide to
 
-```bash
-# Show exactly what would be sent, and send nothing.
-otscout probe --targets 10.10.0.0/24 --dry-run
+Read the limits and the fragile device list first. Nothing is sent and no file is
+written.
 
-# Run it.
-otscout probe --targets 10.10.0.0/24 --out site.assets.json --audit audit/
+```bash
+otscout safety
+```
+
+Then produce the review document. This performs target expansion and template
+selection and prints a hex dump of every request, without opening a socket. It is
+meant to be pasted into a change request.
+
+```bash
+otscout probe --targets 10.10.0.0/24 --dry-run
+```
+
+Then run it. Both flags are required, because a scan with no stated purpose and
+no record is not something this tool will perform.
+
+```bash
+otscout probe --targets 10.10.0.0/24 \
+  --reason "quarterly inventory, work order 8812" \
+  --audit runs/2026-03-02.jsonl \
+  --out site.assets.json
+```
+
+Pass the inventory from the passive path and the fragile device rules apply from
+the first packet rather than the second, because the equipment is already
+identified.
+
+```bash
+otscout probe --targets 10.10.0.0/24 --known site.assets.json ...
 ```
 
 ## Privacy

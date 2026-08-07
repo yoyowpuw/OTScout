@@ -32,47 +32,80 @@ often the only path a site needs.
 
 ## Layer 2: read-only by construction
 
-Active probes are not written in Go. They are declared in YAML templates, and the
-template schema has no way to express a state change.
+There is no code path in this project that can encode a write.
 
-Concretely, the loader rejects a template when:
+Requests are not assembled from bytes supplied by a template. They are produced
+by a closed set of builders in `internal/protocol`, and a template chooses among
+them by name and supplies parameters. Nothing else can reach the wire. The
+current set is seven builders: Modbus Read Device Identification, EtherNet/IP
+List Identity, the S7comm connection request, setup and SZL read, and BACnet
+Who-Is and ReadProperty.
 
-- The declared protocol has a known set of read-only operations and the template
-  uses anything outside it. Modbus function codes are restricted to 43 with MEI
-  type 14, which is Read Device Identification. Write single coil, write multiple
-  registers, and the diagnostic subfunctions that force a listen-only mode or
-  restart communications are not representable.
-- A probe declares more than one request and response exchange than the protocol
-  handler allows.
-- The payload exceeds the length ceiling for its protocol.
+Two things keep that set honest:
 
-This is enforcement in the loader, not advice in a document. A contributor cannot
-submit a template that writes to a device, because the schema will not carry it
-and the test suite will reject it.
+- `TestThePackageEncodesNoWrites` reads the protocol package's own source and
+  fails when it exports a byte producing function that is not on a reviewed list,
+  with a note saying which operation it encodes and why that is safe to send.
+  Adding an eighth builder is therefore not a quiet commit. It is a diff that
+  says, in words, that a new kind of packet may now reach industrial equipment.
+- Where a template supplies a number that could change the operation, the builder
+  bounds it. The Modbus function code and MEI type are fixed by the builder and
+  the read code is clamped to the three the specification defines. Every one of
+  the 256 values a template could carry is tested.
+
+Write single coil, write multiple registers, the diagnostic subfunctions that
+force listen-only mode or restart communications, BACnet WriteProperty and
+ReinitializeDevice: none of these has an encoder here. A contributor cannot
+submit a template that writes to a device, because there is nothing for such a
+template to call.
 
 ## Layer 3: pacing
 
-Defaults, all of which can be made stricter but not arbitrarily looser:
+The engine sends one packet at a time, to one host at a time, over one
+connection. There is no concurrency setting. Parallelism is the single change
+most likely to turn a survey into an outage, so it is not a knob that can be
+turned by accident, or at all.
 
-| Control | Default | Purpose |
-| --- | --- | --- |
-| Concurrent hosts | 1 | A device never competes with a neighbour for bandwidth |
-| Connections per host | 1 | No connection table exhaustion on small stacks |
-| Inter-packet delay | 250ms | Leaves the scan cycle room to breathe |
-| Global packet ceiling | 4 per second | Bounds total load on a segment |
-| Connect timeout | 3s | Fails fast rather than holding a socket |
-| Read timeout | 3s | Same |
-| Error rate abort | 20 percent | Stops the run when devices start not answering |
+The rest can be made stricter but not meaningfully looser:
+
+| Control | Flag | Default | May be |
+| --- | --- | --- | --- |
+| Inter-packet delay | `--delay` | 250ms | Raised freely, lowered only to 50ms |
+| Global packet ceiling | `--rate` | 4 per second | Lowered only |
+| Connect timeout | `--connect-timeout` | 3s | Shortened, or raised to at most 30s |
+| Read timeout | `--read-timeout` | 3s | Same |
+| Error rate abort | `--abort-error-rate` | 20 percent | Lowered only |
+
+The delay floor is generous because the packet ceiling is the real limit: at four
+packets per second the engine already waits 250ms, so lowering the delay alone
+buys nothing and cannot be used to hurry a run.
+
+Timeouts are bounded in both directions. A longer wait is not the safe direction
+here, because holding a socket open against a device with a small connection
+table is itself a load.
 
 The error rate abort matters more than it looks. If a scan begins to provoke
 failures, continuing is the worst possible action, so the engine stops on its own
-rather than waiting for a human to notice.
+rather than waiting for a human to notice. It waits for at least five attempts
+first, since one failure out of one attempt is a rate of 100 percent and means
+nothing.
 
 ## Layer 4: review before sending
 
 `--dry-run` performs template selection and target expansion, then prints a hex
 dump of every request that would be sent to every target, and exits without
-opening a socket. The output is intended to be pasted into a change request.
+opening a socket. Templates held back by the risk gate are listed too, with their
+bytes and the reason they are held back, because a reviewer is deciding what this
+tool may do and not only what it is about to do.
+
+The output also carries the effective limits and an estimated duration computed
+from the same arithmetic the engine paces with, so the figure somebody plans a
+maintenance window around cannot drift away from the run.
+
+It is intended to be pasted into a change request.
+
+To see the limits and the deny list without planning a scan at all, run
+`otscout safety`.
 
 ## Layer 5: risk ratings
 
@@ -83,24 +116,77 @@ Every template declares one of three ratings.
 - `caution`: a legitimate read that some implementations handle poorly. Requires
   `--allow-risk caution`.
 - `lab-only`: useful for research but not appropriate for production equipment.
-  Requires `--allow-risk lab-only` and prints a warning naming each template.
+  Requires `--allow-risk lab-only`.
+
+A run allows only `safe` unless told otherwise. Anything above the ceiling is
+skipped and reported by name, along with the flag that would include it, so an
+operator who wanted it learns how to ask rather than concluding the template is
+broken.
+
+The point of the gate is not that a `caution` probe must never run. It is that
+running one should be a sentence somebody typed.
 
 The rating lives in the template so that the judgement travels with the probe and
 can be revised by whoever learns something new about a device family.
 
 ## Layer 6: the fragile device deny list
 
-Some device families are known to react badly to specific probes. Those pairings
-live in a deny list that is consulted after a device has been identified, and a
-matching probe is skipped with the reason recorded. The list is data, so it can
-be extended by anyone who finds a new case, without a code change.
+Some device families react badly to particular probes, and some equipment should
+not be probed at all. Both live in `internal/safety/data/fragile.yaml`. A matching
+probe is skipped and the rule that skipped it is named in the output, so the
+decision can be argued with rather than merely obeyed.
+
+The list is consulted against what the run has learned about a device, which
+means it can normally only stop the second and later probes of a host. That is
+inherent: to know a device is fragile you have to know what it is, and to know
+what it is you have to have asked it something. The first question asked of any
+host is therefore always the safest one available.
+
+There is a way around that, and it is the reason to run the passive path first.
+Pass an existing inventory to `probe` and the deny list applies from the first
+packet, because the identities are already known. For a safety instrumented
+system that is the difference between one packet and none.
+
+The list is short on purpose. An entry is a claim about how real equipment
+behaves, and a guessed entry silently removes a device from every scan, which
+from the outside looks identical to the device not being there. So a rule cites
+what it rests on: either a published report, or a stated refusal to actively
+probe a class of equipment. `TestEveryRuleCitesSomethingOrExplainsWhyNot` holds
+the file to that.
+
+Two kinds of entry are currently in it.
+
+The first is a report. The SIMATIC S7-300 CPU family is documented to enter
+defect mode under repeated packets to port 102, recovery needs a cold restart,
+and Siemens states no fix is planned. So once a device identifies as an S7-300,
+this tool stops speaking S7comm to it. It has already got what it came for.
+
+The second is a policy. Safety instrumented systems are not probed, at all. A
+safety controller exists to take a process to a safe state when something else
+has already gone wrong, and it is the last automated thing between a plant and an
+incident. The benefit of fingerprinting one is a slightly more complete
+inventory; the cost of being wrong is a safety function. Nothing this tool
+produces is worth that trade. Triconex, ProSafe-RS, Safety Manager and HIMax are
+in the list, and passive capture identifies them at no risk.
 
 ## Layer 7: the audit log
 
-Every active run writes a JSON Lines audit file. One record per packet, with the
-timestamp, target, template, risk rating, request bytes, response bytes and
-outcome. Also recorded: the operator supplied reason for the scan, the exact
-flags used, and the effective safety settings.
+An active run will not start without `--reason` and `--audit`. Neither is
+defaulted: an audit path this tool chose is one the operator does not know
+exists, and a reason this tool invented is not a reason.
+
+The file is JSON Lines. A header naming the reason, the invocation and the
+effective settings; one record per exchange with the timestamp, target,
+template, risk rating, request bytes, response bytes, duration and outcome; and a
+summary line at the end, so a truncated file is visibly truncated.
+
+Skipped exchanges are recorded too, with the rule or flag that skipped them. A
+run that sent almost nothing should be able to say why, rather than looking like
+a run that found nothing.
+
+Records are flushed as they happen rather than at the end, because the run that
+matters most is the one that ends badly. An existing audit file is never
+overwritten; the run is refused instead.
 
 This exists because the honest answer to "what did your tool do to my network"
 has to be a file, not a recollection.

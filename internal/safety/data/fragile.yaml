@@ -1,0 +1,74 @@
+# Devices that must not be sent particular probes, or any probe at all.
+#
+# This list is short, and it is short on purpose. An entry here is a claim about
+# how real equipment behaves, and a claim of that kind is worth exactly as much
+# as the evidence behind it. A guessed entry silently removes a device from every
+# scan, which looks identical to the device not being there. So each rule cites
+# what it rests on, and a rule nobody can source does not belong in the file.
+#
+# The list is consulted after a device has been identified, which means it can
+# only ever stop the second and later probes of a host. That is inherent: to know
+# a device is fragile you have to know what it is. The first question asked of any
+# host is therefore always the safest one available.
+#
+# If you have seen equipment react badly to a probe, an entry here with the model,
+# the firmware version and what happened is the most valuable contribution this
+# project can receive. See docs/SAFETY.md.
+version: 1
+
+rules:
+  - id: siemens-s7-300-repeated-iso-tsap
+    vendor: siemens
+    family: S7-300
+    protocols: [s7comm]
+    reason: >-
+      The S7-300 CPU family is documented to enter defect mode under repeated
+      packets to port 102, and recovery needs a cold restart, which means someone
+      walking to the cabinet. Siemens states no fix is planned for the family, and
+      the advisories cover all versions, so there is no firmware level at which
+      this stops being true. One identification exchange has already succeeded by
+      the time this rule is consulted, so nothing is lost by refusing to keep
+      asking the same CPU for more.
+    references:
+      - https://www.cisa.gov/news-events/ics-advisories/icsa-15-064-04
+      - https://www.cisa.gov/news-events/ics-advisories/icsa-16-161-01
+      - https://cert-portal.siemens.com/productcert/html/ssa-492828.html
+
+  # The rules below are not reports of a specific defect. They are a refusal to
+  # actively probe safety instrumented systems at all.
+  #
+  # A safety instrumented system exists to take a process to a safe state when
+  # something else has already gone wrong, and it is the last automated thing
+  # between a plant and an incident. The asymmetry is what decides it: the benefit
+  # of fingerprinting one is a slightly more complete inventory, and the cost of
+  # being wrong is a safety function. Nothing this tool produces is worth that
+  # trade, and every practitioner guideline on scanning control networks says the
+  # same. Identify these from passive capture instead, which costs nothing.
+  - id: schneider-triconex-safety-controller
+    vendor: schneider-electric
+    product: Triconex
+    reason: >-
+      Triconex is a safety instrumented system and this tool will not send it
+      anything. Build its inventory entry from passive capture.
+
+  - id: yokogawa-prosafe-rs-safety-controller
+    vendor: yokogawa
+    product: ProSafe
+    reason: >-
+      ProSafe-RS is a safety instrumented system and this tool will not send it
+      anything. Build its inventory entry from passive capture.
+
+  - id: honeywell-safety-manager
+    vendor: honeywell
+    product: Safety Manager
+    reason: >-
+      Safety Manager is a safety instrumented system and this tool will not send
+      it anything. Build its inventory entry from passive capture.
+
+  - id: hima-safety-controller
+    product: HIMax
+    reason: >-
+      HIMax is a safety instrumented system and this tool will not send it
+      anything. Build its inventory entry from passive capture. This rule matches
+      on the product alone because HIMA is not yet in the vendor alias table, so a
+      device reporting it would not resolve to a canonical vendor id.

@@ -36,13 +36,17 @@ func TestModbusRequestIsAlwaysTheIdentificationFunction(t *testing.T) {
 	// An out of range read code must be clamped rather than passed through,
 	// because the only bytes this package may emit are a device identification
 	// read. There is deliberately no way to reach any other function code.
-	for _, code := range []byte{0x00, 0x05, 0x10, 0xFF} {
-		frame := ModbusDeviceIDRequest(7, 2, code)
+	//
+	// Every value is tried rather than a handful, because the read code arrives
+	// from a YAML template as a number and the property has to hold for numbers
+	// nobody thought of.
+	for code := 0; code <= 0xFF; code++ {
+		frame := ModbusDeviceIDRequest(7, 2, byte(code))
 		if frame[7] != modbusFCReadDeviceID {
-			t.Fatalf("function code = 0x%02x, want 0x2b", frame[7])
+			t.Fatalf("read code 0x%02x: function code = 0x%02x, want 0x2b", code, frame[7])
 		}
 		if frame[8] != modbusMEIDeviceID {
-			t.Fatalf("MEI type = 0x%02x, want 0x0e", frame[8])
+			t.Fatalf("read code 0x%02x: MEI type = 0x%02x, want 0x0e", code, frame[8])
 		}
 		switch frame[9] {
 		case ModbusReadBasic, ModbusReadRegular, ModbusReadExtended:
