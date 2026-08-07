@@ -41,7 +41,7 @@ func RenderPlan(w io.Writer, policy Policy, plan Plan) error {
 	packets := 0
 	for _, ex := range plan.Exchanges {
 		if ex.Risk.AtMost(policy.AllowedRisk) {
-			packets++
+			packets += ex.Packets()
 		}
 	}
 
@@ -65,8 +65,9 @@ func RenderPlan(w io.Writer, policy Policy, plan Plan) error {
 }
 
 func renderExchange(out *writer, policy Policy, ex Exchange) {
-	header := fmt.Sprintf("  %s %s to %s/%d, risk %s",
-		ex.TemplateID, ex.Protocol, ex.Target.Transport, ex.Target.Port, ex.Risk)
+	header := fmt.Sprintf("  %s %s to %s/%d, risk %s, %s",
+		ex.TemplateID, ex.Protocol, ex.Target.Transport, ex.Target.Port, ex.Risk,
+		plural(ex.Packets(), "packet"))
 	if !ex.Risk.AtMost(policy.AllowedRisk) {
 		// A skipped template is still listed, with its bytes. The reviewer is
 		// deciding what this tool may do, and a request that would run under a
@@ -74,12 +75,21 @@ func renderExchange(out *writer, policy Policy, ex Exchange) {
 		header += fmt.Sprintf(" (NOT SENT: above the allowed risk of %s)", policy.AllowedRisk)
 	}
 	out.line("%s", header)
-	if ex.Purpose != "" {
-		out.line("    asks: %s", ex.Purpose)
-	}
-	out.line("    %d bytes", len(ex.Request))
-	for _, dumpLine := range strings.Split(strings.TrimRight(hex.Dump(ex.Request), "\n"), "\n") {
-		out.line("    %s", dumpLine)
+
+	// Every step is shown, including the ones that only establish a session.
+	// Three packets reaching a CPU is three packets, and a reviewer counting
+	// what will hit their network should not have to know that S7comm needs a
+	// handshake before it will answer.
+	for idx, step := range ex.Steps {
+		label := fmt.Sprintf("    step %d of %d", idx+1, len(ex.Steps))
+		if step.Purpose != "" {
+			label += ": " + step.Purpose
+		}
+		out.line("%s", label)
+		out.line("      %d bytes", len(step.Request))
+		for _, dumpLine := range strings.Split(strings.TrimRight(hex.Dump(step.Request), "\n"), "\n") {
+			out.line("      %s", dumpLine)
+		}
 	}
 }
 

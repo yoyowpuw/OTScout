@@ -22,14 +22,31 @@ type Timeouts struct {
 	Read    time.Duration
 }
 
-// Sender puts one exchange on the wire.
+// Dialer opens a connection for one exchange. It is the only interface in the
+// project that reaches the network, and it is an interface so that everything
+// above it can be tested without one.
 //
-// This is the only interface in the project that opens a socket to equipment,
-// and it is an interface so that everything above it can be tested without one.
-// A sender must not retry: retrying is a pacing decision, and pacing decisions
-// belong to the engine.
-type Sender interface {
-	Send(ctx context.Context, ex Exchange, timeouts Timeouts) ([]byte, error)
+// It receives the whole exchange rather than only the target because framing is
+// protocol specific: there is no general way to know that a device has finished
+// replying, and the protocol name is what selects the rule.
+type Dialer interface {
+	Dial(ctx context.Context, ex Exchange, timeouts Timeouts) (Conn, error)
+}
+
+// Conn carries the steps of one exchange.
+//
+// A connection lasts exactly one exchange. That is not an efficiency decision: a
+// socket held open against a device with a small connection table is a load in
+// itself, and the whole point of the sequential design is that a device is
+// finished with before anything else happens to it.
+//
+// An implementation must not retry. Retrying is a pacing decision, and pacing
+// decisions belong to the engine.
+type Conn interface {
+	// Exchange sends one request and returns the reply. It returns ErrNoAnswer
+	// when the deadline passes with nothing back.
+	Exchange(ctx context.Context, request []byte, readTimeout time.Duration) ([]byte, error)
+	Close() error
 }
 
 // Interpreter turns a reply into what the run now knows about the device.
@@ -37,7 +54,7 @@ type Sender interface {
 // The engine needs this for one reason only: the deny list matches on identity,
 // so a device has to be recognised before the rules protecting it can apply.
 type Interpreter interface {
-	Interpret(ex Exchange, response []byte) asset.Identity
+	Interpret(ex Exchange, step Step, response []byte) asset.Identity
 }
 
 // Plan is everything one run intends to do.
@@ -86,6 +103,7 @@ type Result struct {
 // Reply is one answer received.
 type Reply struct {
 	Exchange Exchange
+	Step     Step
 	Response []byte
 	Duration time.Duration
 }
@@ -100,7 +118,7 @@ type Skip struct {
 // Engine runs a plan under a policy.
 type Engine struct {
 	policy   Policy
-	sender   Sender
+	dialer   Dialer
 	auditor  *Auditor
 	denyList *DenyList
 	interp   Interpreter
@@ -135,25 +153,25 @@ func withClock(now func() time.Time, sleep func(context.Context, time.Duration) 
 
 // NewEngine builds an engine, refusing a policy that is out of bounds.
 //
-// A nil sender is only valid for a dry run. Requiring the caller to supply one
+// A nil dialer is only valid for a dry run. Requiring the caller to supply one
 // otherwise means the mistake of forgetting it is caught here rather than as a
 // panic partway through a run against live equipment.
-func NewEngine(policy Policy, sender Sender, opts ...Option) (*Engine, error) {
+func NewEngine(policy Policy, dialer Dialer, opts ...Option) (*Engine, error) {
 	if err := policy.Validate(); err != nil {
 		return nil, fmt.Errorf("safety policy: %w", err)
 	}
 
 	e := &Engine{
 		policy: policy,
-		sender: sender,
+		dialer: dialer,
 		now:    time.Now,
 		sleep:  sleepContext,
 	}
 	for _, opt := range opts {
 		opt(e)
 	}
-	if sender == nil && !e.dryRun {
-		return nil, errors.New("a run that is not a dry run needs a sender")
+	if dialer == nil && !e.dryRun {
+		return nil, errors.New("a run that is not a dry run needs a dialer")
 	}
 	return e, nil
 }
@@ -237,66 +255,14 @@ func (e *Engine) Run(ctx context.Context, plan Plan) (Result, error) {
 			}
 
 			if e.dryRun {
-				if err := e.record(Record{
-					Timestamp:  e.now(),
-					Target:     ex.Target.Address(),
-					Transport:  ex.Target.Transport,
-					TemplateID: ex.TemplateID,
-					Protocol:   ex.Protocol,
-					Risk:       ex.Risk,
-					Purpose:    ex.Purpose,
-					Outcome:    OutcomeDryRun,
-					Request:    ex.Request,
-				}); err != nil {
+				if err := e.recordDryRun(ex); err != nil {
 					return result, err
 				}
 				result.Skipped++
 				continue
 			}
 
-			if err := e.pace(ctx, lastSend, interval); err != nil {
-				e.recordSkip(&result, ex, OutcomeSkippedAborted, "the run was cancelled")
-				result.Aborted = true
-				result.AbortReason = "cancelled"
-				continue
-			}
-
-			sendStarted := e.now()
-			response, sendErr := e.sender.Send(ctx, ex, Timeouts{
-				Connect: e.policy.ConnectTimeout,
-				Read:    e.policy.ReadTimeout,
-			})
-			elapsed := e.now().Sub(sendStarted)
-			lastSend = e.now()
-
-			outcome, detail := classify(sendErr)
-			result.Sent++
-			if outcome.Failed() {
-				result.Failed++
-			} else {
-				result.Answered++
-				result.Replies = append(result.Replies, Reply{Exchange: ex, Response: response, Duration: elapsed})
-				if e.interp != nil {
-					identity := known[host]
-					identity.Merge(e.interp.Interpret(ex, response))
-					known[host] = identity
-				}
-			}
-
-			if err := e.record(Record{
-				Timestamp:  sendStarted,
-				Target:     ex.Target.Address(),
-				Transport:  ex.Target.Transport,
-				TemplateID: ex.TemplateID,
-				Protocol:   ex.Protocol,
-				Risk:       ex.Risk,
-				Purpose:    ex.Purpose,
-				Outcome:    outcome,
-				Request:    ex.Request,
-				Response:   response,
-				DurationMS: elapsed.Milliseconds(),
-				Detail:     detail,
-			}); err != nil {
+			if err := e.runExchange(ctx, ex, &result, known, &lastSend, interval); err != nil {
 				return result, err
 			}
 
@@ -312,6 +278,150 @@ func (e *Engine) Run(ctx context.Context, plan Plan) (Result, error) {
 		return result, err
 	}
 	return result, nil
+}
+
+// runExchange walks the steps of one template against one target.
+//
+// The connection is opened once and the steps share it, because several
+// protocols need a session before they will answer anything useful. Everything
+// else stays here rather than moving into the transport: the pause before each
+// packet, the audit record after it, and the decision to stop.
+//
+// A step that fails ends the exchange. There is no session left to continue in,
+// and asking a device that has just stopped answering to answer something else
+// is the behaviour this whole package exists to prevent.
+func (e *Engine) runExchange(
+	ctx context.Context,
+	ex Exchange,
+	result *Result,
+	known map[string]asset.Identity,
+	lastSend *time.Time,
+	interval time.Duration,
+) error {
+	host := ex.Target.Host
+
+	// The dial is paced like a packet, because to the device it is one.
+	if err := e.pace(ctx, *lastSend, interval); err != nil {
+		e.recordSkip(result, ex, OutcomeSkippedAborted, "the run was cancelled")
+		result.Aborted = true
+		result.AbortReason = "cancelled"
+		return nil
+	}
+
+	timeouts := Timeouts{Connect: e.policy.ConnectTimeout, Read: e.policy.ReadTimeout}
+	conn, err := e.dialer.Dial(ctx, ex, timeouts)
+	if err != nil {
+		*lastSend = e.now()
+		result.Sent++
+		result.Failed++
+		return e.record(Record{
+			Timestamp:  e.now(),
+			Target:     ex.Target.Address(),
+			Transport:  ex.Target.Transport,
+			TemplateID: ex.TemplateID,
+			Protocol:   ex.Protocol,
+			Risk:       ex.Risk,
+			Outcome:    OutcomeUnreachable,
+			Detail:     err.Error(),
+		})
+	}
+	defer conn.Close()
+
+	for idx, step := range ex.Steps {
+		if idx > 0 {
+			if err := e.pace(ctx, *lastSend, interval); err != nil {
+				result.Aborted = true
+				result.AbortReason = "cancelled"
+				return nil
+			}
+		}
+
+		sendStarted := e.now()
+		response, sendErr := conn.Exchange(ctx, step.Request, e.policy.ReadTimeout)
+		elapsed := e.now().Sub(sendStarted)
+		*lastSend = e.now()
+
+		outcome, detail := classify(sendErr)
+		result.Sent++
+		if outcome.Failed() {
+			result.Failed++
+		} else {
+			result.Answered++
+			result.Replies = append(result.Replies, Reply{
+				Exchange: ex, Step: step, Response: response, Duration: elapsed,
+			})
+			if e.interp != nil {
+				identity := known[host]
+				identity.Merge(e.interp.Interpret(ex, step, response))
+				known[host] = identity
+			}
+		}
+
+		if err := e.record(Record{
+			Timestamp:  sendStarted,
+			Target:     ex.Target.Address(),
+			Transport:  ex.Target.Transport,
+			TemplateID: ex.TemplateID,
+			Protocol:   ex.Protocol,
+			Risk:       ex.Risk,
+			Step:       idx + 1,
+			Steps:      len(ex.Steps),
+			Purpose:    step.Purpose,
+			Outcome:    outcome,
+			Request:    step.Request,
+			Response:   response,
+			DurationMS: elapsed.Milliseconds(),
+			Detail:     detail,
+		}); err != nil {
+			return err
+		}
+
+		if outcome.Failed() {
+			// The remaining steps are recorded as not attempted rather than
+			// dropped, so the file shows a session that died halfway instead of
+			// a template that was never tried.
+			for rest := idx + 1; rest < len(ex.Steps); rest++ {
+				if err := e.record(Record{
+					Timestamp:  e.now(),
+					Target:     ex.Target.Address(),
+					Transport:  ex.Target.Transport,
+					TemplateID: ex.TemplateID,
+					Protocol:   ex.Protocol,
+					Risk:       ex.Risk,
+					Step:       rest + 1,
+					Steps:      len(ex.Steps),
+					Purpose:    ex.Steps[rest].Purpose,
+					Outcome:    OutcomeSkippedAborted,
+					Detail:     fmt.Sprintf("step %d of this exchange went unanswered, so the session ended", idx+1),
+				}); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}
+	return nil
+}
+
+func (e *Engine) recordDryRun(ex Exchange) error {
+	for idx, step := range ex.Steps {
+		if err := e.record(Record{
+			Timestamp:  e.now(),
+			Target:     ex.Target.Address(),
+			Transport:  ex.Target.Transport,
+			TemplateID: ex.TemplateID,
+			Protocol:   ex.Protocol,
+			Risk:       ex.Risk,
+			Step:       idx + 1,
+			Steps:      len(ex.Steps),
+			Purpose:    step.Purpose,
+			Outcome:    OutcomeDryRun,
+			Request:    step.Request,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // pace waits out whatever is left of the interval since the previous packet.
@@ -370,7 +480,7 @@ func (e *Engine) recordSkip(result *Result, ex Exchange, outcome Outcome, reason
 		TemplateID: ex.TemplateID,
 		Protocol:   ex.Protocol,
 		Risk:       ex.Risk,
-		Purpose:    ex.Purpose,
+		Steps:      len(ex.Steps),
 		Outcome:    outcome,
 		Detail:     reason,
 	})

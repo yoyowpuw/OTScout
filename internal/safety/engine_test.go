@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -13,34 +14,65 @@ import (
 	"github.com/yoyowpuw/OTScout/internal/asset"
 )
 
-// recorder is a sender that puts nothing on a wire and remembers what it was
-// asked to.
+// recorder is a dialer that reaches no network and remembers what it was asked
+// to send.
+//
+// The engine never inspects request bytes, so the exchange helpers below make
+// each request the readable name of the step that produced it. That keeps the
+// fake from needing to know anything the real transport would not, and makes an
+// assertion about what went out read like the plan that produced it.
 type recorder struct {
-	sent    []Exchange
+	// sent holds one line per packet, "host template/step", so a multi step
+	// template shows up as the several packets it actually is.
+	sent    []string
+	dialed  []Target
+	closed  int
 	replies map[string][]byte
 	fail    map[string]error
-	// at is set from the engine's clock so the order and spacing of sends can be
-	// checked without waiting for them.
+	// failDial refuses the connection rather than the first packet.
+	failDial map[string]error
+	// at is when each packet went out by the engine's clock, so the spacing can
+	// be checked without waiting for it.
 	at    []time.Duration
 	clock *fakeClock
 }
 
-func (r *recorder) Send(_ context.Context, ex Exchange, _ Timeouts) ([]byte, error) {
-	r.sent = append(r.sent, ex)
+func (r *recorder) Dial(_ context.Context, ex Exchange, _ Timeouts) (Conn, error) {
+	r.dialed = append(r.dialed, ex.Target)
+	if err, bad := r.failDial[ex.Target.Host]; bad {
+		return nil, err
+	}
+	return &recorderConn{owner: r, target: ex.Target}, nil
+}
+
+type recorderConn struct {
+	owner  *recorder
+	target Target
+}
+
+func (c *recorderConn) Exchange(_ context.Context, request []byte, _ time.Duration) ([]byte, error) {
+	r := c.owner
+	name := string(request)
+	r.sent = append(r.sent, c.target.Host+" "+name)
 	if r.clock != nil {
 		r.at = append(r.at, r.clock.elapsed())
 	}
-	key := ex.Target.Host + "/" + ex.TemplateID
-	if err, bad := r.fail[key]; bad {
+
+	if err, bad := r.fail[c.target.Host+"/"+name]; bad {
 		return nil, err
 	}
-	if err, bad := r.fail[ex.Target.Host]; bad {
+	if err, bad := r.fail[c.target.Host]; bad {
 		return nil, err
 	}
-	if reply, ok := r.replies[key]; ok {
+	if reply, ok := r.replies[c.target.Host+"/"+name]; ok {
 		return reply, nil
 	}
 	return []byte{0x01}, nil
+}
+
+func (c *recorderConn) Close() error {
+	c.owner.closed++
+	return nil
 }
 
 // fakeClock advances only when the engine sleeps, so a test can describe minutes
@@ -68,26 +100,35 @@ func (c *fakeClock) Sleep(ctx context.Context, d time.Duration) error {
 	return nil
 }
 
+// exchange builds a single step template whose request bytes are its own name.
 func exchange(host, template, protocol string, risk Risk) Exchange {
-	return Exchange{
+	return steps(host, template, protocol, risk, template)
+}
+
+// steps builds a template that needs several packets on one connection, which is
+// what S7comm actually requires.
+func steps(host, template, protocol string, risk Risk, names ...string) Exchange {
+	ex := Exchange{
 		Target:     Target{Host: host, Port: 502, Transport: "tcp"},
 		TemplateID: template,
 		Protocol:   protocol,
 		Risk:       risk,
-		Request:    []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x05, 0x01, 0x2b, 0x0e, 0x01, 0x00},
-		Purpose:    "read the device identification objects",
 	}
+	for _, name := range names {
+		ex.Steps = append(ex.Steps, Step{Purpose: "ask for " + name, Request: []byte(name)})
+	}
+	return ex
 }
 
-func newTestEngine(t *testing.T, policy Policy, sender Sender, opts ...Option) (*Engine, *fakeClock) {
+func newTestEngine(t *testing.T, policy Policy, dialer Dialer, opts ...Option) (*Engine, *fakeClock) {
 	t.Helper()
 	clock := newFakeClock()
 	opts = append(opts, withClock(clock.Now, clock.Sleep))
-	engine, err := NewEngine(policy, sender, opts...)
+	engine, err := NewEngine(policy, dialer, opts...)
 	if err != nil {
 		t.Fatalf("build engine: %v", err)
 	}
-	if r, ok := sender.(*recorder); ok {
+	if r, ok := dialer.(*recorder); ok {
 		r.clock = clock
 	}
 	return engine, clock
@@ -111,8 +152,8 @@ func TestARunSendsOnlyWhatTheOperatorAllowed(t *testing.T) {
 		t.Fatalf("run: %v", err)
 	}
 
-	if len(sender.sent) != 1 || sender.sent[0].TemplateID != "modbus-device-id" {
-		t.Fatalf("sent %d exchanges, want only the safe one: %+v", len(sender.sent), sender.sent)
+	if want := []string{"10.0.0.1 modbus-device-id"}; !slices.Equal(sender.sent, want) {
+		t.Fatalf("sent %v, want only the safe one, %v", sender.sent, want)
 	}
 	if result.Skipped != 2 {
 		t.Errorf("skipped %d, want 2", result.Skipped)
@@ -140,8 +181,8 @@ func TestRaisingTheAllowedRiskLetsTheProbeThrough(t *testing.T) {
 		t.Fatalf("run: %v", err)
 	}
 
-	if len(sender.sent) != 1 || sender.sent[0].TemplateID != "modbus-extended-id" {
-		t.Fatalf("allowing caution should let exactly the caution probe through, got %+v", sender.sent)
+	if want := []string{"10.0.0.1 modbus-extended-id"}; !slices.Equal(sender.sent, want) {
+		t.Fatalf("allowing caution should let exactly the caution probe through, got %v", sender.sent)
 	}
 }
 
@@ -162,18 +203,118 @@ func TestAHostIsFinishedBeforeItsNeighbourIsTouched(t *testing.T) {
 		t.Fatalf("run: %v", err)
 	}
 
-	var order []string
-	for _, ex := range sender.sent {
-		order = append(order, ex.Target.Host+" "+ex.TemplateID)
-	}
 	want := []string{
 		"10.0.0.1 modbus-device-id",
 		"10.0.0.1 enip-list-identity",
 		"10.0.0.2 modbus-device-id",
 		"10.0.0.2 enip-list-identity",
 	}
-	if strings.Join(order, ", ") != strings.Join(want, ", ") {
-		t.Errorf("sends came out as\n  %s\nwant\n  %s", strings.Join(order, ", "), strings.Join(want, ", "))
+	if !slices.Equal(sender.sent, want) {
+		t.Errorf("sends came out as\n  %s\nwant\n  %s",
+			strings.Join(sender.sent, ", "), strings.Join(want, ", "))
+	}
+}
+
+// TestAMultiStepTemplateSharesOneConnection is the reason exchanges hold steps.
+//
+// An S7 CPU answers a Read SZL only after a COTP connection and a negotiated PDU
+// size, so the three packets have to arrive on the same socket in order. What
+// this pins is that they do, that the socket is opened once and closed once, and
+// that the steps are still paced individually rather than sprayed at the device
+// as fast as the stack will take them.
+func TestAMultiStepTemplateSharesOneConnection(t *testing.T) {
+	sender := &recorder{}
+	engine, _ := newTestEngine(t, DefaultPolicy(), sender)
+
+	if _, err := engine.Run(context.Background(), Plan{Exchanges: []Exchange{
+		steps("10.0.0.1", "s7comm-identify", "s7comm",
+			RiskSafe, "cotp-connect", "setup-communication", "read-szl"),
+	}}); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	want := []string{
+		"10.0.0.1 cotp-connect",
+		"10.0.0.1 setup-communication",
+		"10.0.0.1 read-szl",
+	}
+	if !slices.Equal(sender.sent, want) {
+		t.Errorf("the handshake came out as %v, want %v", sender.sent, want)
+	}
+	if len(sender.dialed) != 1 {
+		t.Errorf("the exchange opened %d connections, want 1", len(sender.dialed))
+	}
+	if sender.closed != 1 {
+		t.Errorf("the connection was closed %d times, want once", sender.closed)
+	}
+	for idx := 1; idx < len(sender.at); idx++ {
+		if gap := sender.at[idx] - sender.at[idx-1]; gap != DefaultInterPacketDelay {
+			t.Errorf("step %d followed the one before after %s, want the full %s",
+				idx+1, gap, DefaultInterPacketDelay)
+		}
+	}
+}
+
+// TestAFailedStepEndsTheExchange stops the engine asking a device that has just
+// stopped answering to answer something else.
+func TestAFailedStepEndsTheExchange(t *testing.T) {
+	var trail bytes.Buffer
+	sender := &recorder{fail: map[string]error{"10.0.0.1/setup-communication": ErrNoAnswer}}
+	engine, _ := newTestEngine(t, DefaultPolicy(), sender, WithAuditor(NewAuditorTo(&trail)))
+
+	result, err := engine.Run(context.Background(), Plan{Exchanges: []Exchange{
+		steps("10.0.0.1", "s7comm-identify", "s7comm",
+			RiskSafe, "cotp-connect", "setup-communication", "read-szl"),
+	}})
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	want := []string{"10.0.0.1 cotp-connect", "10.0.0.1 setup-communication"}
+	if !slices.Equal(sender.sent, want) {
+		t.Errorf("packets sent were %v, want the run to stop after the failure: %v", sender.sent, want)
+	}
+	if sender.closed != 1 {
+		t.Errorf("the connection was closed %d times, want once even on failure", sender.closed)
+	}
+	if result.Failed != 1 {
+		t.Errorf("counted %d failures, want 1", result.Failed)
+	}
+
+	// The step that never ran is in the file, so a reader sees a session that
+	// died halfway rather than a template that was never tried.
+	records := decodeTrail(t, trail.Bytes())
+	last := records[len(records)-2]
+	if last["outcome"] != string(OutcomeSkippedAborted) {
+		t.Errorf("the unrun step was recorded as %v, want %s", last["outcome"], OutcomeSkippedAborted)
+	}
+	if last["step"] != 3.0 {
+		t.Errorf("the unrun step is numbered %v, want 3", last["step"])
+	}
+}
+
+// TestARefusedConnectionCostsOnePacketNotThree keeps the abort arithmetic honest
+// for multi step templates.
+//
+// A host that will not accept a connection has not received three packets, so
+// counting three failures against the error rate would make one dead address
+// look like three and abort a run that is going fine.
+func TestARefusedConnectionCostsOnePacketNotThree(t *testing.T) {
+	sender := &recorder{failDial: map[string]error{"10.0.0.1": ErrUnreachable}}
+	engine, _ := newTestEngine(t, DefaultPolicy(), sender)
+
+	result, err := engine.Run(context.Background(), Plan{Exchanges: []Exchange{
+		steps("10.0.0.1", "s7comm-identify", "s7comm",
+			RiskSafe, "cotp-connect", "setup-communication", "read-szl"),
+	}})
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if len(sender.sent) != 0 {
+		t.Errorf("%d packets went out over a connection that was refused", len(sender.sent))
+	}
+	if result.Sent != 1 || result.Failed != 1 {
+		t.Errorf("a refused connection counted as %d sent and %d failed, want 1 and 1", result.Sent, result.Failed)
 	}
 }
 
@@ -290,7 +431,7 @@ type identifier struct {
 	as   asset.Identity
 }
 
-func (i identifier) Interpret(ex Exchange, _ []byte) asset.Identity {
+func (i identifier) Interpret(ex Exchange, _ Step, _ []byte) asset.Identity {
 	if ex.TemplateID == i.when {
 		return i.as
 	}
@@ -534,7 +675,8 @@ func TestAMalformedExchangeIsRefusedBeforeAnythingIsSent(t *testing.T) {
 		"a port out of range":           func(e *Exchange) { e.Target.Port = 70000 },
 		"no template to attribute it":   func(e *Exchange) { e.TemplateID = "" },
 		"a risk rating that is not one": func(e *Exchange) { e.Risk = "probably fine" },
-		"no bytes to send":              func(e *Exchange) { e.Request = nil },
+		"no steps at all":               func(e *Exchange) { e.Steps = nil },
+		"a step with no bytes to send":  func(e *Exchange) { e.Steps[0].Request = nil },
 	}
 
 	for name, breakIt := range cases {

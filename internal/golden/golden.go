@@ -28,7 +28,6 @@ import (
 	"io/fs"
 	"path"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/yoyowpuw/OTScout/internal/asset"
@@ -272,113 +271,10 @@ func (f Fixture) Observed() (Expectation, error) {
 
 // BuildRequest rebuilds a recorded request from its builder name and parameters.
 //
-// The named builders are the whole set of messages this project can put on a
-// wire. Adding a name here is therefore not a convenience but a decision to let
-// a new kind of packet reach industrial equipment, and it belongs in a review
-// that treats it that way.
+// The builders live in the protocol package rather than here, because they are
+// the same closed set the active probe draws from. A fixture that names one is
+// therefore checking the bytes a real scan would send, which is the whole reason
+// the corpus records the request alongside the response.
 func BuildRequest(r Request) ([]byte, error) {
-	switch r.Builder {
-	case "modbus.read-device-identification":
-		transactionID, err := numberParam(r, "transaction_id", 0)
-		if err != nil {
-			return nil, err
-		}
-		unitID, err := numberParam(r, "unit_id", 1)
-		if err != nil {
-			return nil, err
-		}
-		readCode, err := numberParam(r, "read_code", int(protocol.ModbusReadBasic))
-		if err != nil {
-			return nil, err
-		}
-		return protocol.ModbusDeviceIDRequest(uint16(transactionID), byte(unitID), byte(readCode)), nil
-
-	case "enip.list-identity":
-		context, err := contextParam(r)
-		if err != nil {
-			return nil, err
-		}
-		return protocol.ENIPListIdentityRequest(context), nil
-
-	case "s7comm.connection-request":
-		source, err := numberParam(r, "source_tsap", 0x0100)
-		if err != nil {
-			return nil, err
-		}
-		dest, err := numberParam(r, "dest_tsap", 0x0102)
-		if err != nil {
-			return nil, err
-		}
-		return protocol.S7ConnectionRequest(uint16(source), uint16(dest)), nil
-
-	case "s7comm.setup-communication":
-		reference, err := numberParam(r, "pdu_reference", 0)
-		if err != nil {
-			return nil, err
-		}
-		return protocol.S7SetupCommunication(uint16(reference)), nil
-
-	case "s7comm.read-szl":
-		reference, err := numberParam(r, "pdu_reference", 0)
-		if err != nil {
-			return nil, err
-		}
-		szlID, err := numberParam(r, "szl_id", int(protocol.SZLComponentIdentification))
-		if err != nil {
-			return nil, err
-		}
-		szlIndex, err := numberParam(r, "szl_index", 0)
-		if err != nil {
-			return nil, err
-		}
-		return protocol.S7ReadSZLRequest(uint16(reference), uint16(szlID), uint16(szlIndex)), nil
-
-	case "bacnet.who-is":
-		return protocol.BACnetWhoIsRequest(), nil
-
-	case "bacnet.read-property":
-		invokeID, err := numberParam(r, "invoke_id", 0)
-		if err != nil {
-			return nil, err
-		}
-		property, err := numberParam(r, "property", int(protocol.BACnetPropModelName))
-		if err != nil {
-			return nil, err
-		}
-		return protocol.BACnetReadPropertyRequest(byte(invokeID), uint32(property)), nil
-
-	default:
-		return nil, fmt.Errorf("no request builder named %q", r.Builder)
-	}
-}
-
-// numberParam reads a parameter that may be decimal or, with an 0x prefix, hex.
-func numberParam(r Request, name string, fallback int) (int, error) {
-	raw, ok := r.Params[name]
-	if !ok {
-		return fallback, nil
-	}
-	value, err := strconv.ParseInt(strings.TrimSpace(raw), 0, 32)
-	if err != nil {
-		return 0, fmt.Errorf("parameter %s of builder %s: %w", name, r.Builder, err)
-	}
-	return int(value), nil
-}
-
-func contextParam(r Request) ([8]byte, error) {
-	var out [8]byte
-	raw, ok := r.Params["sender_context"]
-	if !ok {
-		return out, nil
-	}
-	var decoded asset.HexBytes
-	if err := decoded.UnmarshalJSON([]byte(strconv.Quote(raw))); err != nil {
-		return out, fmt.Errorf("parameter sender_context of builder %s: %w", r.Builder, err)
-	}
-	if len(decoded) != len(out) {
-		return out, fmt.Errorf("parameter sender_context of builder %s must be %d bytes, got %d",
-			r.Builder, len(out), len(decoded))
-	}
-	copy(out[:], decoded)
-	return out, nil
+	return protocol.BuildRequest(r.Builder, protocol.Params(r.Params))
 }

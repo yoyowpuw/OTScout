@@ -58,6 +58,9 @@ that as a design constraint rather than a disclaimer.
 - The run stops on its own if devices start failing to answer.
 - An active run will not start without `--reason` and `--audit`, and every
   packet, skip and refusal lands in that file as it happens.
+- Every template step has to have been answered by a device recorded in the
+  golden corpus, so no probe reaches its first real test on somebody's plant
+  floor.
 
 Run `otscout safety` to print the limits and the deny list without planning a
 scan, and see [docs/SAFETY.md](docs/SAFETY.md) for the full model.
@@ -208,30 +211,66 @@ written.
 otscout safety
 ```
 
+See what can be asked, and the exact bytes of each request. Also sends nothing.
+
+```bash
+otscout templates --bytes
+```
+
+There are four protocols. Modbus/TCP Read Device Identification, EtherNet/IP List
+Identity, S7comm Read SZL and BACnet ReadProperty. Each is the call its protocol
+defines for asking a device what it is, and each template cites the specification
+it comes from.
+
+Two of them need more than one packet. S7comm takes four, because a CPU will not
+serve a diagnostic read until a connection is established and a PDU size
+negotiated. BACnet takes five, because it keeps identity in one property per
+read. The template says so, the dry run dumps every one of them, and the audit
+file records each separately.
+
 Then produce the review document. This performs target expansion and template
 selection and prints a hex dump of every request, without opening a socket. It is
 meant to be pasted into a change request.
 
 ```bash
-otscout probe --targets 10.10.0.0/24 --dry-run
+otscout probe 10.10.0.0/24 --dry-run
 ```
+
+Targets can be single addresses, CIDR prefixes, or inclusive `first-last` ranges,
+given as arguments or with `--targets-from hosts.txt`. Host names are refused, so
+that the audit file records the address that was contacted rather than the name
+that was typed. A prefix wider than 4096 addresses is refused outright rather
+than trimmed to fit, because scanning the first few thousand and reporting the
+rest as empty is a false statement about a plant.
 
 Then run it. Both flags are required, because a scan with no stated purpose and
 no record is not something this tool will perform.
 
 ```bash
-otscout probe --targets 10.10.0.0/24 \
+otscout probe 10.10.0.0/24 \
   --reason "quarterly inventory, work order 8812" \
   --audit runs/2026-03-02.jsonl \
   --out site.assets.json
 ```
 
-Pass the inventory from the passive path and the fragile device rules apply from
-the first packet rather than the second, because the equipment is already
-identified.
+Pass the inventory from the passive path and two things improve. The fragile
+device rules apply from the first packet rather than the second, because the
+equipment is already identified. And with `--only-known-ports`, templates run
+only against ports that were actually seen open, so the scan stops knocking on
+doors nobody has reported.
 
 ```bash
-otscout probe --targets 10.10.0.0/24 --known site.assets.json ...
+otscout probe --targets-from hosts.txt \
+  --known site.assets.json --only-known-ports \
+  --reason "quarterly inventory, work order 8812" \
+  --audit runs/2026-03-02.jsonl
+```
+
+Narrow it further with `--template`, and reach a protocol on a non-standard port
+with `--port`.
+
+```bash
+otscout probe 10.10.0.7 --template modbus-device-id --port 5020 ...
 ```
 
 ## Privacy

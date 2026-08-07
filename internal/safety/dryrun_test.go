@@ -7,6 +7,22 @@ import (
 	"time"
 )
 
+// realModbusExchange carries the bytes a Read Device Identification request
+// actually consists of, because the point of this document is the hex dump and a
+// placeholder would not test it.
+func realModbusExchange(host string) Exchange {
+	return Exchange{
+		Target:     Target{Host: host, Port: 502, Transport: "tcp"},
+		TemplateID: "modbus-device-id",
+		Protocol:   "modbus",
+		Risk:       RiskSafe,
+		Steps: []Step{{
+			Purpose: "read the device identification objects",
+			Request: []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x05, 0x01, 0x2b, 0x0e, 0x01, 0x00},
+		}},
+	}
+}
+
 // TestTheDryRunShowsTheActualBytes is the review document doing its job.
 //
 // The audience is a control engineer deciding whether to approve traffic to their
@@ -17,9 +33,7 @@ func TestTheDryRunShowsTheActualBytes(t *testing.T) {
 	plan := Plan{
 		Reason:     "pre-approval for change CR-4417",
 		Invocation: []string{"otscout", "probe", "10.0.0.1", "--dry-run"},
-		Exchanges: []Exchange{
-			exchange("10.0.0.1", "modbus-device-id", "modbus", RiskSafe),
-		},
+		Exchanges:  []Exchange{realModbusExchange("10.0.0.1")},
 	}
 
 	if err := RenderPlan(&out, DefaultPolicy(), plan); err != nil {
@@ -56,10 +70,11 @@ func TestTheDryRunShowsTheActualBytes(t *testing.T) {
 // it is held back.
 func TestTheDryRunListsWhatItWouldNotSend(t *testing.T) {
 	var out bytes.Buffer
-	plan := Plan{Exchanges: []Exchange{
-		exchange("10.0.0.1", "modbus-device-id", "modbus", RiskSafe),
-		exchange("10.0.0.1", "modbus-extended-id", "modbus", RiskCaution),
-	}}
+	held := realModbusExchange("10.0.0.1")
+	held.TemplateID = "modbus-extended-id"
+	held.Risk = RiskCaution
+
+	plan := Plan{Exchanges: []Exchange{realModbusExchange("10.0.0.1"), held}}
 
 	if err := RenderPlan(&out, DefaultPolicy(), plan); err != nil {
 		t.Fatalf("render: %v", err)
@@ -118,6 +133,39 @@ func TestTheEstimateMatchesThePacingTheEngineWillUse(t *testing.T) {
 				t.Errorf("estimated %s for %d packets, want %s", got, tc.packets, tc.want)
 			}
 		})
+	}
+}
+
+// TestEveryStepOfAMultiStepTemplateIsShown keeps the document from understating
+// what will hit the network.
+//
+// Three packets reaching a CPU is three packets. A reviewer counting them should
+// not have to know that S7comm needs a handshake before it answers anything, so
+// the setup steps are dumped in full alongside the one that asks a question.
+func TestEveryStepOfAMultiStepTemplateIsShown(t *testing.T) {
+	var out bytes.Buffer
+	plan := Plan{Exchanges: []Exchange{
+		steps("10.0.0.1", "s7comm-identify", "s7comm",
+			RiskSafe, "cotp-connect", "setup-communication", "read-szl"),
+	}}
+
+	if err := RenderPlan(&out, DefaultPolicy(), plan); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	rendered := out.String()
+
+	for _, want := range []string{
+		"3 packets",
+		"step 1 of 3",
+		"step 2 of 3",
+		"step 3 of 3",
+		// The scope line counts packets rather than templates, since that is
+		// what a maintenance window is planned around.
+		"Scope: 1 target, 3 requests",
+	} {
+		if !strings.Contains(rendered, want) {
+			t.Errorf("the review document does not contain %q:\n%s", want, rendered)
+		}
 	}
 }
 

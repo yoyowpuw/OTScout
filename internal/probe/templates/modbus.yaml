@@ -1,0 +1,59 @@
+# Modbus/TCP identification.
+#
+# Modbus has no notion of a device description. The protocol carries coils and
+# registers, and what is in them is a matter between the engineer and the plant.
+# Read Device Identification, function 43 with MEI type 14, is the one call in
+# the specification that asks a device about itself rather than about the
+# process, which makes it the only Modbus request this project will send.
+version: 1
+
+templates:
+  - id: modbus-device-id
+    summary: >-
+      Read the basic device identification objects: vendor name, product code and
+      firmware revision.
+    protocol: modbus
+    port: 502
+    transport: tcp
+    risk: safe
+    references:
+      - https://www.modbus.org/docs/Modbus_Application_Protocol_V1_1b3.pdf
+    steps:
+      - purpose: read the basic device identification stream
+        request: modbus.read-device-identification
+        params:
+          # Unit id 1 is the usual default for a device reached directly rather
+          # than through a serial gateway. A gateway needs the unit id of the
+          # device behind it, which the operator has to supply, because guessing
+          # at unit ids means talking to equipment nobody asked about.
+          unit_id: "1"
+          read_code: "1"
+
+  - id: modbus-device-id-extended
+    summary: >-
+      Read the regular and extended identification streams, which carry the
+      vendor URL, product name and model when a device publishes them.
+    protocol: modbus
+    port: 502
+    transport: tcp
+    risk: caution
+    risk_note: >-
+      The read is defined by the specification and changes nothing, but the
+      regular and extended streams are far less widely implemented than the basic
+      one. A device that does not support them should answer with exception code
+      2, and most do. Some older stacks answer a function they do not implement
+      badly rather than politely, which is a property of the implementation and
+      not of the request. Run it when the basic stream left you short.
+    references:
+      - https://www.modbus.org/docs/Modbus_Application_Protocol_V1_1b3.pdf
+    steps:
+      - purpose: read the regular identification stream
+        request: modbus.read-device-identification
+        params:
+          unit_id: "1"
+          read_code: "2"
+      - purpose: read the extended identification stream
+        request: modbus.read-device-identification
+        params:
+          unit_id: "1"
+          read_code: "3"

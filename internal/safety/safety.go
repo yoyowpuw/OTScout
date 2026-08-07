@@ -79,28 +79,44 @@ func (t Target) Validate() error {
 	return nil
 }
 
-// Exchange is one request this engine may put on the wire, and everything needed
-// to decide whether it should.
+// Step is one request and the reply expected to follow it.
 //
 // Request holds finished bytes. This package neither builds nor parses them,
 // which is what keeps the read-only guarantee provable somewhere else: the bytes
 // can only have come from a builder in the protocol package, and no builder there
 // encodes a state change.
+type Step struct {
+	// Purpose is a short phrase for the audit log and the dry run, saying what
+	// this step is asking the device for.
+	Purpose string
+
+	Request []byte
+}
+
+// Exchange is one template run against one target: an ordered set of steps that
+// share a connection, and everything needed to decide whether to send any of it.
+//
+// Several protocols cannot identify a device in one packet. An S7 CPU will not
+// answer a Read SZL until a COTP connection has been established and a maximum
+// PDU size negotiated, which is three round trips before anything useful comes
+// back, all on the same socket. Modelling that as three unrelated exchanges would
+// break it, and hiding it inside the transport would put three packets on a wire
+// with no pacing between them and two of them missing from the audit file. So the
+// sequence is declared here, and the engine walks it.
 type Exchange struct {
 	Target Target
 
-	// TemplateID names the template that produced the request, so that a report
+	// TemplateID names the template that produced these steps, so that a report
 	// of a device misbehaving can be traced to something a person can revise.
 	TemplateID string
 
 	Protocol string
 	Risk     Risk
-	Request  []byte
-
-	// Purpose is a short phrase for the audit log and the dry run, saying what
-	// this exchange is asking the device for.
-	Purpose string
+	Steps    []Step
 }
+
+// Packets is how many requests this exchange would put on the wire.
+func (e Exchange) Packets() int { return len(e.Steps) }
 
 // Validate rejects an exchange that cannot be audited or attributed.
 func (e Exchange) Validate() error {
@@ -116,8 +132,13 @@ func (e Exchange) Validate() error {
 	if err := e.Risk.Validate(); err != nil {
 		return fmt.Errorf("exchange %s: %w", e.TemplateID, err)
 	}
-	if len(e.Request) == 0 {
-		return fmt.Errorf("exchange %s has no request bytes", e.TemplateID)
+	if len(e.Steps) == 0 {
+		return fmt.Errorf("exchange %s has no steps", e.TemplateID)
+	}
+	for idx, step := range e.Steps {
+		if len(step.Request) == 0 {
+			return fmt.Errorf("exchange %s step %d has no request bytes", e.TemplateID, idx+1)
+		}
 	}
 	return nil
 }

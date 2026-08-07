@@ -1,0 +1,87 @@
+# S7comm identification.
+#
+# This is the only protocol in the library that needs a conversation. A CPU will
+# not answer a Read SZL until a COTP connection has been established and a maximum
+# PDU size negotiated, so three packets arrive before anything useful comes back.
+# All three are declared here rather than hidden in the transport, which is what
+# lets the dry run show a reviewer the true packet count and the audit log record
+# every one of them.
+#
+# The destination TSAP encodes the rack and slot the CPU sits in, and there is no
+# way to discover it except by asking. The two templates below are the two
+# documented defaults. A CPU refuses the connection request for the wrong slot,
+# and because a failed step ends its exchange, the wrong template costs one packet
+# rather than three.
+#
+# Note for anyone extending this file: the deny list refuses further S7comm
+# traffic to a device that has identified as an S7-300, because that family is
+# documented to enter defect mode under repeated packets to port 102 and Siemens
+# has stated no fix is planned. See internal/safety/data/fragile.yaml.
+version: 1
+
+templates:
+  - id: s7comm-identify-rack0-slot2
+    summary: >-
+      Identify an S7-300 or S7-400 CPU: order number, firmware version, serial
+      number and plant designation.
+    protocol: s7comm
+    port: 102
+    transport: tcp
+    risk: safe
+    references:
+      - https://cache.industry.siemens.com/dl/files/604/1214574/att_69704/v1/s7300_cpu_31xc_and_31x_manual_en-US_en-US.pdf
+    steps:
+      - purpose: establish the COTP connection to rack 0 slot 2
+        request: s7comm.connection-request
+        params:
+          source_tsap: "0x0100"
+          dest_tsap: "0x0102"
+      - purpose: negotiate the maximum PDU size, which the CPU requires before it will answer
+        request: s7comm.setup-communication
+        params:
+          pdu_reference: "0"
+      - purpose: read SZL 0x001C, the component identification list
+        request: s7comm.read-szl
+        params:
+          pdu_reference: "1"
+          szl_id: "0x001C"
+          szl_index: "0"
+      - purpose: read SZL 0x0011, the module identification list carrying the order number
+        request: s7comm.read-szl
+        params:
+          pdu_reference: "2"
+          szl_id: "0x0011"
+          szl_index: "0"
+
+  - id: s7comm-identify-rack0-slot1
+    summary: >-
+      Identify an S7-1200 or S7-1500 CPU, which answers on rack 0 slot 1 rather
+      than slot 2.
+    protocol: s7comm
+    port: 102
+    transport: tcp
+    risk: safe
+    references:
+      - https://cache.industry.siemens.com/dl/files/593/109478593/att_899384/v1/s71500_cpu1516_3_pn_dp_manual_en-US_en-US.pdf
+    steps:
+      - purpose: establish the COTP connection to rack 0 slot 1
+        request: s7comm.connection-request
+        params:
+          source_tsap: "0x0100"
+          dest_tsap: "0x0101"
+      - purpose: negotiate the maximum PDU size, which the CPU requires before it will answer
+        request: s7comm.setup-communication
+        params:
+          pdu_reference: "0"
+      - purpose: read SZL 0x001C, the component identification list
+        request: s7comm.read-szl
+        params:
+          pdu_reference: "1"
+          szl_id: "0x001C"
+          szl_index: "0"
+      - purpose: read SZL 0x0011, the module identification list carrying the order number
+        request: s7comm.read-szl
+        params:
+          pdu_reference: "2"
+          szl_id: "0x0011"
+          szl_index: "0"

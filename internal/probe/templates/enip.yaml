@@ -1,0 +1,29 @@
+# EtherNet/IP identification.
+#
+# List Identity is the encapsulation layer's own discovery call. It is answered
+# before any CIP session exists, which is what makes it the safest question in
+# this library: there is no session to disturb and no object to address. The
+# reply carries the vendor id, device type, product code, revision and serial
+# number as numbers, plus the product name as text, which is more identity in one
+# packet than any other protocol here gives.
+version: 1
+
+templates:
+  - id: enip-list-identity
+    summary: >-
+      Ask for the CIP identity object: vendor, device type, product code,
+      revision, serial number and product name.
+    protocol: enip
+    port: 44818
+    transport: tcp
+    risk: safe
+    references:
+      - https://www.odva.org/technology-standards/key-technologies/ethernet-ip/
+    steps:
+      - purpose: request the identity of the device and any devices behind it
+        request: enip.list-identity
+        params:
+          # The sender context is echoed back untouched. Zero is used rather than
+          # anything random so that the bytes in a dry run are the bytes that go
+          # out, and a reviewer comparing the two finds them identical.
+          sender_context: "0000000000000000"

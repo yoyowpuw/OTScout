@@ -1,0 +1,34 @@
+{
+  "id": "iti-siemens-s7-300-setup-communication",
+  "summary": "A real S7-300 acknowledging Setup Communication and negotiating a 240 byte PDU, which is the handshake step that has to succeed before the CPU will answer any SZL read",
+  "device": {
+    "source": "Siemens SIMATIC S7-300 CPU 315-2 PN/DP",
+    "description": "S7-300 CPU reached over ISO-on-TCP by the snap7 client library",
+    "provenance": "captured",
+    "license": "CC-BY-4.0",
+    "references": [
+      "https://github.com/ITI/ICS-Security-Tools/blob/master/pcaps/s7/snap7_s300_everything.pcapng",
+      "https://github.com/ITI/ICS-Security-Tools"
+    ]
+  },
+  "port": 102,
+  "transport": "tcp",
+  "request": {
+    "builder": "s7comm.setup-communication",
+    "params": {
+      "pdu_reference": "0"
+    },
+    "bytes": "0300001902f08032010000000000080000f0000001000101e0"
+  },
+  "response": "0300001b02f080320300000000000800000000f0000001000100f0",
+  "expect": {
+    "protocol": "s7comm",
+    "verdict": "decoded",
+    "fields": {
+      "negotiated_pdu_length": "240"
+    },
+    "notes": [
+      "device completed S7 Setup Communication"
+    ]
+  }
+}

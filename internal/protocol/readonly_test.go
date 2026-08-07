@@ -39,6 +39,88 @@ var reviewedBuilders = map[string]string{
 
 	"BACnetReadPropertyRequest": "confirmed service 12, ReadProperty. The write counterparts " +
 		"are services 15 and 16, and neither has an encoder in this package.",
+
+	"BuildRequest": "not an encoder. It looks up one of the builders above by name and passes " +
+		"parameters to it, which is how a template reaches them. It can only return what they " +
+		"return, and TestTheRegistryOffersNothingBeyondTheReviewedBuilders pins the set it " +
+		"can reach.",
+}
+
+// reviewedRequests is the set of names a template may ask for.
+//
+// The Go functions above are what exists; this is what a YAML file can reach.
+// They are checked separately because they can drift apart in both directions: a
+// builder could be added to the registry under a name nobody reviewed, or a name
+// could survive in the registry after the function behind it changed meaning.
+var reviewedRequests = map[string]bool{
+	"modbus.read-device-identification": true,
+	"enip.list-identity":                true,
+	"s7comm.connection-request":         true,
+	"s7comm.setup-communication":        true,
+	"s7comm.read-szl":                   true,
+	"bacnet.who-is":                     true,
+	"bacnet.read-property":              true,
+}
+
+// TestTheRegistryOffersNothingBeyondTheReviewedBuilders guards the surface a
+// template can actually reach.
+//
+// docs/SAFETY.md says a template chooses a request by name and cannot supply
+// bytes. That claim is only worth something if the list of names is fixed, so
+// this fails when the registry grows or loses one.
+func TestTheRegistryOffersNothingBeyondTheReviewedBuilders(t *testing.T) {
+	offered := BuilderNames()
+	if len(offered) == 0 {
+		t.Fatal("the registry is empty, so this test would pass no matter what was added to it")
+	}
+
+	for _, name := range offered {
+		if !reviewedRequests[name] {
+			t.Errorf("a template can ask for %q, which is not in reviewedRequests. "+
+				"Adding a name here means a new kind of packet may reach industrial equipment.", name)
+		}
+	}
+	for name := range reviewedRequests {
+		if !HasBuilder(name) {
+			t.Errorf("reviewedRequests lists %q, which the registry no longer offers", name)
+		}
+	}
+}
+
+// TestAnUnknownRequestNameIsRefused keeps a typo in a template from silently
+// sending nothing, or worse, something else.
+func TestAnUnknownRequestNameIsRefused(t *testing.T) {
+	_, err := BuildRequest("modbus.write-single-coil", nil)
+	if err == nil {
+		t.Fatal("the registry built a request for a name it does not have")
+	}
+	// The error lists what does exist, because the operator hitting this is
+	// usually writing a template and needs to know what is available.
+	if !strings.Contains(err.Error(), "modbus.read-device-identification") {
+		t.Errorf("the refusal does not say what can be asked for instead:\n%v", err)
+	}
+}
+
+// TestAParameterTooLargeForItsFieldIsRefused stops a template from quietly
+// sending a value nobody wrote.
+//
+// A number that overflows its field wraps rather than failing, so a unit id of
+// 300 would reach the wire as 44. That is a different device.
+func TestAParameterTooLargeForItsFieldIsRefused(t *testing.T) {
+	cases := []struct {
+		builder string
+		params  Params
+	}{
+		{"modbus.read-device-identification", Params{"unit_id": "300"}},
+		{"modbus.read-device-identification", Params{"transaction_id": "70000"}},
+		{"s7comm.read-szl", Params{"szl_id": "70000"}},
+		{"bacnet.read-property", Params{"invoke_id": "256"}},
+	}
+	for _, tc := range cases {
+		if _, err := BuildRequest(tc.builder, tc.params); err == nil {
+			t.Errorf("%s accepted %v, which does not fit the field it goes in", tc.builder, tc.params)
+		}
+	}
 }
 
 // TestThePackageEncodesNoWrites reads this package's own source and fails when it

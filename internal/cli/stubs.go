@@ -20,14 +20,6 @@ func stub(use, short string) *cobra.Command {
 	}
 }
 
-func newProbeCommand(_ *Options) *cobra.Command {
-	return stub("probe", "Actively fingerprint targets under the safety engine")
-}
-
-func newTemplatesCommand(_ *Options) *cobra.Command {
-	return stub("templates", "Inspect the fingerprint template library")
-}
-
 func newReportCommand(_ *Options) *cobra.Command {
 	return stub("report", "Render findings as CSV, VEX or a standalone HTML file")
 }

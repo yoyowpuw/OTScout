@@ -1,0 +1,48 @@
+# BACnet/IP identification.
+#
+# BACnet keeps its identity in properties of the Device object, one read per
+# property, so identifying a controller costs several packets where EtherNet/IP
+# costs one. The reads are addressed to instance 4194303, the wildcard meaning
+# "the device receiving this", so no device instance has to be discovered first
+# and nothing is guessed at.
+#
+# Who-Is comes first anyway, because the I-Am it provokes carries the device
+# instance, the vendor id and the segmentation support in a single reply, and
+# because a device that answers Who-Is and nothing else has still told us it is a
+# BACnet device.
+version: 1
+
+templates:
+  - id: bacnet-device-identity
+    summary: >-
+      Identify a BACnet controller: vendor, model name, firmware revision and
+      application software version from the Device object.
+    protocol: bacnet
+    port: 47808
+    transport: udp
+    risk: safe
+    references:
+      - https://www.ashrae.org/technical-resources/standards-and-guidelines
+    steps:
+      - purpose: send Who-Is, which provokes an I-Am carrying the device instance and vendor id
+        request: bacnet.who-is
+      - purpose: read the vendor name property
+        request: bacnet.read-property
+        params:
+          invoke_id: "1"
+          property: "121"
+      - purpose: read the model name property
+        request: bacnet.read-property
+        params:
+          invoke_id: "2"
+          property: "70"
+      - purpose: read the firmware revision property
+        request: bacnet.read-property
+        params:
+          invoke_id: "3"
+          property: "44"
+      - purpose: read the application software version property
+        request: bacnet.read-property
+        params:
+          invoke_id: "4"
+          property: "12"

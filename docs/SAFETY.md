@@ -41,17 +41,26 @@ current set is seven builders: Modbus Read Device Identification, EtherNet/IP
 List Identity, the S7comm connection request, setup and SZL read, and BACnet
 Who-Is and ReadProperty.
 
-Two things keep that set honest:
+Three things keep that set honest:
 
 - `TestThePackageEncodesNoWrites` reads the protocol package's own source and
   fails when it exports a byte producing function that is not on a reviewed list,
   with a note saying which operation it encodes and why that is safe to send.
   Adding an eighth builder is therefore not a quiet commit. It is a diff that
   says, in words, that a new kind of packet may now reach industrial equipment.
+- `TestTheRegistryOffersNothingBeyondTheReviewedBuilders` covers the other
+  direction. The builders are what exists; the registry is what a YAML file can
+  reach. Both are pinned, because they can drift apart either way.
 - Where a template supplies a number that could change the operation, the builder
   bounds it. The Modbus function code and MEI type are fixed by the builder and
   the read code is clamped to the three the specification defines. Every one of
-  the 256 values a template could carry is tested.
+  the 256 values a template could carry is tested. A parameter too large for the
+  field it goes in is refused rather than truncated, because a unit id of 300
+  silently becomes 44, and that is a different device.
+
+Templates are validated when they are loaded, not when they are sent. Every step
+of every template is built at startup, so a typo fails before the run rather than
+partway through one, against equipment.
 
 Write single coil, write multiple registers, the diagnostic subfunctions that
 force listen-only mode or restart communications, BACnet WriteProperty and
@@ -65,6 +74,16 @@ The engine sends one packet at a time, to one host at a time, over one
 connection. There is no concurrency setting. Parallelism is the single change
 most likely to turn a survey into an outage, so it is not a knob that can be
 turned by accident, or at all.
+
+Some protocols need several packets before they answer anything. An S7 CPU will
+not serve a diagnostic read until a COTP connection is up and a maximum PDU size
+has been negotiated, which is three round trips on one socket before the useful
+one. Those steps are declared in the template and walked by the engine rather
+than handled inside the transport, so that each is paced like any other packet
+and each appears in the audit file. A step that goes unanswered ends its
+exchange: there is no session left to continue in, and asking a device that has
+just stopped answering to answer something else is the behaviour this engine
+exists to prevent.
 
 The rest can be made stricter but not meaningfully looser:
 
@@ -98,6 +117,10 @@ opening a socket. Templates held back by the risk gate are listed too, with thei
 bytes and the reason they are held back, because a reviewer is deciding what this
 tool may do and not only what it is about to do.
 
+Every step is dumped, including the ones that only establish a session. Three
+packets reaching a CPU is three packets, and a reviewer counting what will hit
+their network should not have to know that S7comm needs a handshake first.
+
 The output also carries the effective limits and an estimated duration computed
 from the same arithmetic the engine paces with, so the figure somebody plans a
 maintenance window around cannot drift away from the run.
@@ -105,7 +128,8 @@ maintenance window around cannot drift away from the run.
 It is intended to be pasted into a change request.
 
 To see the limits and the deny list without planning a scan at all, run
-`otscout safety`.
+`otscout safety`. To see the templates and the exact bytes of each one, run
+`otscout templates --bytes`.
 
 ## Layer 5: risk ratings
 
@@ -175,14 +199,20 @@ An active run will not start without `--reason` and `--audit`. Neither is
 defaulted: an audit path this tool chose is one the operator does not know
 exists, and a reason this tool invented is not a reason.
 
-The file is JSON Lines. A header naming the reason, the invocation and the
-effective settings; one record per exchange with the timestamp, target,
-template, risk rating, request bytes, response bytes, duration and outcome; and a
-summary line at the end, so a truncated file is visibly truncated.
+The file is JSON Lines. A header naming the reason, the invocation, the build
+version and the effective settings; one record per packet with the timestamp,
+target, template, risk rating, step number, request bytes, response bytes,
+duration and outcome; and a summary line at the end, so a truncated file is
+visibly truncated.
 
-Skipped exchanges are recorded too, with the rule or flag that skipped them. A
-run that sent almost nothing should be able to say why, rather than looking like
-a run that found nothing.
+One record per packet, not per template. A four step S7 identification produces
+four records, numbered, so a reader can see that the first two set up a session
+and only the last two asked the CPU anything.
+
+Skipped exchanges are recorded too, with the rule or flag that skipped them, as
+are the steps of an exchange abandoned partway through. A run that sent almost
+nothing should be able to say why, rather than looking like a run that found
+nothing.
 
 Records are flushed as they happen rather than at the end, because the run that
 matters most is the one that ends badly. An existing audit file is never

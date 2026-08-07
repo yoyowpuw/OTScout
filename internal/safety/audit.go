@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/yoyowpuw/OTScout/internal/asset"
+	"github.com/yoyowpuw/OTScout/internal/version"
 )
 
 // Outcome is what happened to one exchange.
@@ -57,12 +58,19 @@ func (o Outcome) Failed() bool {
 
 // Record is one line of the audit file.
 type Record struct {
-	Timestamp  time.Time      `json:"timestamp"`
-	Target     string         `json:"target"`
-	Transport  string         `json:"transport"`
-	TemplateID string         `json:"template_id"`
-	Protocol   string         `json:"protocol"`
-	Risk       Risk           `json:"risk"`
+	Timestamp  time.Time `json:"timestamp"`
+	Target     string    `json:"target"`
+	Transport  string    `json:"transport"`
+	TemplateID string    `json:"template_id"`
+	Protocol   string    `json:"protocol"`
+	Risk       Risk      `json:"risk"`
+
+	// Step and Steps place this packet within its exchange, counting from one.
+	// A reader tracing an S7 identification needs to see that the first two
+	// packets set up a session and only the third asked for anything.
+	Step  int `json:"step,omitempty"`
+	Steps int `json:"steps,omitempty"`
+
 	Purpose    string         `json:"purpose,omitempty"`
 	Outcome    Outcome        `json:"outcome"`
 	Request    asset.HexBytes `json:"request,omitempty"`
@@ -76,7 +84,10 @@ type Record struct {
 type Header struct {
 	Timestamp time.Time `json:"timestamp"`
 	Kind      string    `json:"kind"`
-	Version   string    `json:"version"`
+
+	// Version is the build that ran, stamped by WriteHeader rather than by the
+	// caller.
+	Version string `json:"version"`
 
 	// Reason is what the operator said the scan was for. It is required, and it
 	// is required because the file exists to be read by somebody who was not
@@ -177,8 +188,14 @@ func (a *Auditor) write(v any) error {
 }
 
 // WriteHeader records what the run is and under what settings.
+//
+// The build version is stamped here rather than taken from the caller, because
+// it is the one field a reader always needs and the one a caller would never
+// think to pass. Whether a probe was safe is a question about a particular
+// build, and a file that does not name one cannot answer it.
 func (a *Auditor) WriteHeader(h Header) error {
 	h.Kind = "run"
+	h.Version = version.Short()
 	return a.write(h)
 }
 
