@@ -57,8 +57,20 @@ fmt-check:
 check-text:
 	go run ./scripts/check-text
 
+.PHONY: tidy
+tidy:
+	go mod tidy
+
+# tidy-check is the same pair of commands CI runs. An untidy go.mod costs nothing
+# to fix and fails the build after the push rather than before it, so the check
+# belongs in the target people run locally.
+.PHONY: tidy-check
+tidy-check:
+	go mod tidy
+	git diff --exit-code -- go.mod go.sum
+
 .PHONY: check
-check: fmt-check vet check-text test
+check: tidy-check fmt-check vet check-text test
 
 .PHONY: web-check
 web-check:
