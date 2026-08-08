@@ -20,10 +20,6 @@ func stub(use, short string) *cobra.Command {
 	}
 }
 
-func newReportCommand(_ *Options) *cobra.Command {
-	return stub("report", "Render findings as CSV, VEX or a standalone HTML file")
-}
-
 func newServeCommand(_ *Options) *cobra.Command {
 	return stub("serve", "Serve the local review interface")
 }

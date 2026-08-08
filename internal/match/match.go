@@ -406,7 +406,7 @@ func (m *Matcher) applyVulnerabilities(f *finding.Finding, adv *advisory.Advisor
 	matchedIDs map[string]struct{}) {
 
 	cves := make([]string, 0, len(adv.Vulnerabilities))
-	remediations := make([]string, 0, 4)
+	remediations := make([]finding.Remediation, 0, 4)
 	var best advisory.Score
 	haveScore := false
 
@@ -434,9 +434,14 @@ func (m *Matcher) applyVulnerabilities(f *finding.Finding, adv *advisory.Advisor
 			if rem.HasFix() {
 				f.FixAvailable = true
 			}
-			if text := remediationText(rem); text != "" {
-				remediations = append(remediations, text)
+			if rem.Category == "" && rem.Details == "" && rem.URL == "" {
+				continue
 			}
+			remediations = append(remediations, finding.Remediation{
+				Category: string(rem.Category),
+				Details:  rem.Details,
+				URL:      rem.URL,
+			})
 		}
 		for _, ref := range v.References {
 			if ref.URL != "" {
@@ -446,7 +451,7 @@ func (m *Matcher) applyVulnerabilities(f *finding.Finding, adv *advisory.Advisor
 	}
 
 	f.CVEs = dedupe(cves)
-	f.Remediations = dedupe(remediations)
+	f.Remediations = dedupeRemediations(remediations)
 
 	if adv.URL != "" {
 		f.References = append([]string{adv.URL}, f.References...)
@@ -465,18 +470,20 @@ func (m *Matcher) applyVulnerabilities(f *finding.Finding, adv *advisory.Advisor
 	}
 }
 
-func remediationText(rem advisory.Remediation) string {
-	parts := make([]string, 0, 3)
-	if rem.Category != "" {
-		parts = append(parts, rem.Category)
+// dedupeRemediations drops repeats. One advisory routinely repeats the same
+// advice under every CVE it covers, and a finding that lists it twelve times
+// buries the one piece of advice that differs.
+func dedupeRemediations(remediations []finding.Remediation) []finding.Remediation {
+	seen := make(map[finding.Remediation]bool, len(remediations))
+	out := make([]finding.Remediation, 0, len(remediations))
+	for _, remediation := range remediations {
+		if seen[remediation] {
+			continue
+		}
+		seen[remediation] = true
+		out = append(out, remediation)
 	}
-	if rem.Details != "" {
-		parts = append(parts, rem.Details)
-	}
-	if rem.URL != "" {
-		parts = append(parts, rem.URL)
-	}
-	return strings.Join(parts, ": ")
+	return out
 }
 
 func anyMatched(ids []string, matched map[string]struct{}) bool {

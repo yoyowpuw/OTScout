@@ -90,7 +90,7 @@ otscout sync --dir corpus/
 otscout match --inventory site.assets.json --corpus corpus/ --output site.findings.json
 
 # 4. Read the result.
-otscout report --findings site.findings.json --format html --out site-report.html
+otscout report --findings site.findings.json --format html --output site-report.html
 ```
 
 Step 4 writes a single self contained HTML file. It needs no server and makes no
@@ -201,6 +201,52 @@ designation matched and by what route, which version range was evaluated by whic
 comparator, and what that returned. Steps that failed are kept as well as steps
 that passed, because knowing that a version check ran and could not answer is what
 stops an engineer redoing it by hand.
+
+## Reporting, for three different readers
+
+`otscout report` renders a findings document into something somebody else can
+read. It sends no packets and needs no network.
+
+```bash
+# The spreadsheet where triage actually happens.
+otscout report --findings site.findings.json --format csv
+
+# One self contained file to send or archive.
+otscout report --findings site.findings.json --format html --output site-report.html
+
+# A CSAF 2.0 VEX document, for tooling and for auditors.
+otscout report --findings site.findings.json --format vex \
+  --publisher "Example Water Authority" --publisher-namespace https://example.org
+```
+
+The **CSV** carries one row per finding, including the version check and the
+matched advisory node, so the reasoning survives the trip into a spreadsheet. It
+is written with a byte order mark, because Excel reads a bare UTF-8 file as the
+local code page and mangles any vendor name with an accent in it.
+
+The **HTML** report is one file with no external references at all: no web font,
+no stylesheet, no script from anywhere else. It opens from a USB stick on a
+workstation that has never had a route to the internet, and it prints. Every row
+expands to show the evidence behind it, using no JavaScript, so the file is still
+complete when it is opened in ten years by whatever is to hand.
+
+The **VEX** document follows the CSAF 2.0 VEX profile, and only confirmed
+findings are stated as `known_affected`. Anything weaker is
+`under_investigation`, because a VEX is read by machines and repeated by people,
+and a guess that travels as a fact is worse than no document. Every affected
+product carries an action statement, which the profile requires and which is the
+specification saying that telling somebody they are exposed without telling them
+what to do is not useful.
+
+Device addresses are left out of the VEX unless you pass `--include-addresses`.
+The document is made to be handed to an auditor, a regulator or a partner, and
+the addresses of exploitable equipment are the part of an inventory least suited
+to leaving the site. Each product entry still says how many devices run it. The
+sharing label defaults to `TLP:AMBER` and is set with `--tlp`.
+
+A VEX has to name who is making the statement, so `--publisher` and
+`--publisher-namespace` are required rather than defaulted. This tool is not the
+issuer, and guessing one would put words in an organisation's mouth.
 
 ## Active discovery, when you decide to
 

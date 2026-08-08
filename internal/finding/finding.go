@@ -13,14 +13,16 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/yoyowpuw/OTScout/internal/asset"
 )
 
 // SchemaVersion is bumped when the on-disk findings format changes
-// incompatibly.
-const SchemaVersion = "1"
+// incompatibly. Version 2 turned remediations from sentences into objects, so
+// that the VEX export can state a category rather than guess one.
+const SchemaVersion = "2"
 
 // Tier is the confidence bucket a finding lands in. The tiers exist so an
 // operator can work the list top down and stop when the evidence gets too thin
@@ -164,8 +166,50 @@ type Finding struct {
 	// window and not, so it is worth a column of its own.
 	FixAvailable bool `json:"fix_available,omitempty"`
 
-	Remediations []string `json:"remediations,omitempty"`
-	References   []string `json:"references,omitempty"`
+	Remediations []Remediation `json:"remediations,omitempty"`
+	References   []string      `json:"references,omitempty"`
+}
+
+// Remediation is one action the advisory offers, with the category kept apart
+// from the text.
+//
+// The category is structured rather than folded into the sentence because the
+// VEX export has to state it as a field, and CSAF gives the five values distinct
+// meanings: labelling a workaround as a vendor fix tells a machine that the
+// vulnerability is resolved when it is not.
+type Remediation struct {
+	// Category is a CSAF remediation category: vendor_fix, mitigation,
+	// workaround, none_available or no_fix_planned.
+	Category string `json:"category,omitempty"`
+	Details  string `json:"details,omitempty"`
+	URL      string `json:"url,omitempty"`
+}
+
+// Text renders the remediation for a table cell or a plain text report.
+func (r Remediation) Text() string {
+	parts := make([]string, 0, 3)
+	if r.Category != "" {
+		parts = append(parts, r.Category)
+	}
+	if r.Details != "" {
+		parts = append(parts, r.Details)
+	}
+	if r.URL != "" {
+		parts = append(parts, r.URL)
+	}
+	return strings.Join(parts, ": ")
+}
+
+// RemediationTexts renders every remediation, for the formats that have one
+// cell to put them in.
+func RemediationTexts(remediations []Remediation) []string {
+	out := make([]string, 0, len(remediations))
+	for _, remediation := range remediations {
+		if text := remediation.Text(); text != "" {
+			out = append(out, text)
+		}
+	}
+	return out
 }
 
 // Priority produces a single sortable number for the findings table. KEV
@@ -289,13 +333,25 @@ func Load(path string) (*Set, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read findings: %w", err)
 	}
+	// The version is read before the rest, because a document from an older
+	// build fails to unmarshal on whichever field changed shape and reports that
+	// as a type error. Somebody holding last month's findings deserves to be
+	// told that, not to be shown a line number in a struct they have never seen.
+	var header struct {
+		SchemaVersion string `json:"schema_version"`
+	}
+	if err := json.Unmarshal(data, &header); err != nil {
+		return nil, fmt.Errorf("parse findings %s: %w", path, err)
+	}
+	if header.SchemaVersion != SchemaVersion {
+		return nil, fmt.Errorf(
+			"findings %s uses schema version %q and this build understands %q; re-run 'otscout match' "+
+				"to regenerate it", path, header.SchemaVersion, SchemaVersion)
+	}
+
 	var set Set
 	if err := json.Unmarshal(data, &set); err != nil {
 		return nil, fmt.Errorf("parse findings %s: %w", path, err)
-	}
-	if set.SchemaVersion != SchemaVersion {
-		return nil, fmt.Errorf("findings %s uses schema version %q, this build understands %q",
-			path, set.SchemaVersion, SchemaVersion)
 	}
 	return &set, nil
 }

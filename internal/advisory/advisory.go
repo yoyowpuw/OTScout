@@ -146,25 +146,36 @@ type Product struct {
 
 // Label renders the product for a table row.
 func (p Product) Label() string {
+	name := firstNonEmpty(p.Name, p.ProductRaw, p.FamilyRaw)
+
+	// A CSAF full product name is usually already "Vendor Thing Version", so
+	// prepending the vendor and appending the version produces labels like
+	// "ABB ABB 800xA Base 6.2.0-0 6.2.0-0". That string ends up quoted verbatim
+	// in a report sent to an auditor, where it reads as a broken tool. The
+	// checks are prefix and suffix rather than substring, so a vendor whose name
+	// happens to appear inside a product designation is still shown.
 	parts := make([]string, 0, 3)
-	if vendor := firstNonEmpty(p.VendorRaw, p.Vendor); vendor != "" {
+	if vendor := firstNonEmpty(p.VendorRaw, p.Vendor); vendor != "" && !hasPrefixFold(name, vendor) {
 		parts = append(parts, vendor)
 	}
-	switch {
-	case p.Name != "":
-		parts = append(parts, p.Name)
-	case p.ProductRaw != "":
-		parts = append(parts, p.ProductRaw)
-	case p.FamilyRaw != "":
-		parts = append(parts, p.FamilyRaw)
+	if name != "" {
+		parts = append(parts, name)
 	}
-	if p.VersionRaw != "" {
+	if p.VersionRaw != "" && !hasSuffixFold(name, p.VersionRaw) {
 		parts = append(parts, p.VersionRaw)
 	}
 	if len(parts) == 0 {
 		return p.ID
 	}
 	return strings.Join(parts, " ")
+}
+
+func hasPrefixFold(value, prefix string) bool {
+	return len(value) >= len(prefix) && strings.EqualFold(value[:len(prefix)], prefix)
+}
+
+func hasSuffixFold(value, suffix string) bool {
+	return len(value) >= len(suffix) && strings.EqualFold(value[len(value)-len(suffix):], suffix)
 }
 
 // Vulnerability is one CVE within an advisory.

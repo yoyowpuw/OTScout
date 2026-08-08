@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
+<title>{{ .Title }}</title>
+<style>
+:root {
+  --ink: #16191d;
+  --ink-soft: #5a6270;
+  --ink-faint: #868e9c;
+  --rule: #dfe3e9;
+  --rule-soft: #eef0f4;
+  --page: #ffffff;
+  --panel: #f7f8fa;
+  --confirmed: #9a3226;
+  --likely: #8a5a12;
+  --possible: #4a5261;
+  --kev: #7a1f1f;
+  --space: 8px;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  padding: calc(var(--space) * 5) calc(var(--space) * 4);
+  background: var(--page);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.sheet { max-width: 1180px; margin: 0 auto; }
+
+h1 { font-size: 22px; font-weight: 600; margin: 0 0 var(--space); letter-spacing: -0.01em; }
+h2 {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-soft);
+  margin: calc(var(--space) * 5) 0 calc(var(--space) * 2);
+  padding-bottom: var(--space);
+  border-bottom: 1px solid var(--rule);
+}
+
+p { margin: 0 0 var(--space); }
+
+.provenance {
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin-bottom: calc(var(--space) * 4);
+}
+.provenance span { white-space: nowrap; }
+.provenance span + span::before {
+  content: "/";
+  color: var(--rule);
+  margin: 0 calc(var(--space) * 1.5);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: var(--space);
+  margin-bottom: calc(var(--space) * 2);
+}
+.card {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: calc(var(--space) * 2);
+  background: var(--panel);
+}
+.card .value {
+  font-size: 26px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+.card .label {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: calc(var(--space) / 2);
+}
+.card .note { font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+
+.prose { max-width: 74ch; color: var(--ink-soft); font-size: 13px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  padding: var(--space) calc(var(--space) * 1.5);
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+tbody td {
+  padding: calc(var(--space) * 1.5);
+  border-bottom: 1px solid var(--rule-soft);
+  vertical-align: top;
+}
+tbody tr:last-child td { border-bottom: 1px solid var(--rule); }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.address { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: nowrap; }
+
+.device { font-weight: 500; }
+.device .sub { display: block; font-weight: 400; color: var(--ink-faint); font-size: 12px; }
+
+.advisory { display: block; font-weight: 500; }
+.advisory .title { display: block; font-weight: 400; color: var(--ink-soft); }
+
+/* Tier is carried by the word, not by the colour. A reader who cannot tell the
+   swatches apart still reads "confirmed", and so does a black and white print. */
+.tier {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px calc(var(--space));
+  border-radius: 3px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.tier-confirmed { color: var(--confirmed); }
+.tier-likely { color: var(--likely); }
+.tier-possible { color: var(--possible); }
+
+.flag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+.flag-kev { color: var(--kev); }
+.flag-fix { color: var(--ink-soft); }
+
+details.evidence { margin-top: var(--space); }
+details.evidence > summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: 12px;
+  list-style: none;
+  display: inline-block;
+  border-bottom: 1px dotted var(--rule);
+}
+details.evidence > summary::-webkit-details-marker { display: none; }
+details.evidence > summary::before { content: "+ "; font-variant-numeric: tabular-nums; }
+details.evidence[open] > summary::before { content: "- "; }
+details.evidence > summary:hover { color: var(--ink); }
+
+.evidence-body {
+  margin-top: var(--space);
+  padding: calc(var(--space) * 1.5);
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  font-size: 12px;
+  max-width: 90ch;
+}
+.evidence-body dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px calc(var(--space) * 2); margin: 0; }
+.evidence-body dt { color: var(--ink-faint); }
+.evidence-body dd { margin: 0; word-break: break-word; }
+.evidence-body .chain { margin: var(--space) 0 0; padding-left: 18px; }
+.evidence-body .chain li { margin-bottom: 2px; }
+.evidence-body .chain li.failed { color: var(--ink-faint); }
+.evidence-body .chain li.failed::marker { content: "x  "; }
+
+.empty {
+  border: 1px dashed var(--rule);
+  border-radius: 6px;
+  padding: calc(var(--space) * 4);
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.filter {
+  display: block;
+  width: 100%;
+  max-width: 340px;
+  padding: calc(var(--space)) calc(var(--space) * 1.5);
+  margin-bottom: calc(var(--space) * 2);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 13px;
+  color: inherit;
+  background: var(--page);
+}
+.filter:focus { outline: 2px solid var(--ink-soft); outline-offset: -1px; }
+.filter-count { font-size: 12px; color: var(--ink-faint); margin-bottom: var(--space); }
+
+footer {
+  margin-top: calc(var(--space) * 6);
+  padding-top: calc(var(--space) * 2);
+  border-top: 1px solid var(--rule);
+  font-size: 12px;
+  color: var(--ink-faint);
+  max-width: 74ch;
+}
+
+@media print {
+  body { padding: 0; font-size: 11px; }
+  .filter, .filter-count { display: none; }
+  details.evidence > summary { display: none; }
+  details.evidence > .evidence-body { display: block; }
+  thead { display: table-header-group; }
+  tbody tr { break-inside: avoid; }
+  .card { background: none; }
+}
+
+@media (max-width: 720px) {
+  body { padding: calc(var(--space) * 2); }
+  thead { display: none; }
+  tbody td { display: block; border-bottom: none; padding: 2px 0; }
+  tbody tr { display: block; border-bottom: 1px solid var(--rule); padding: calc(var(--space) * 2) 0; }
+}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+<h1>{{ .Title }}</h1>
+<p class="provenance">
+  <span>Generated {{ .GeneratedAt }}</span>
+  <span>{{ .Generator }}</span>
+  {{- with .InventoryPath }}<span>Inventory: {{ . }}</span>{{ end }}
+  {{- with .CorpusPath }}<span>Corpus: {{ . }}</span>{{ end }}
+</p>
+
+<h2>Summary</h2>
+<div class="cards">
+  <div class="card">
+    <div class="value">{{ .Summary.Total }}</div>
+    <div class="label">Findings</div>
+  </div>
+  <div class="card">
+    <div class="value">{{ .Summary.AssetsAffected }}</div>
+    <div class="label">Devices affected</div>
+    <div class="note">of {{ .Summary.AssetsConsidered }} assessed</div>
+  </div>
+  <div class="card">
+    <div class="value">{{ .Confirmed }}</div>
+    <div class="label">Confirmed</div>
+    <div class="note">version inside an affected range</div>
+  </div>
+  <div class="card">
+    <div class="value">{{ .Likely }}</div>
+    <div class="label">Likely</div>
+    <div class="note">version not comparable</div>
+  </div>
+  <div class="card">
+    <div class="value">{{ .Possible }}</div>
+    <div class="label">Possible</div>
+    <div class="note">family match only</div>
+  </div>
+  <div class="card">
+    <div class="value">{{ .Summary.KEVCount }}</div>
+    <div class="label">Known exploited</div>
+    <div class="note">listed in CISA KEV</div>
+  </div>
+  <div class="card">
+    <div class="value">{{ .Summary.UniqueCVEs }}</div>
+    <div class="label">Distinct CVEs</div>
+  </div>
+  <div class="card">
+    <div class="value">{{ .Summary.FixAvailable }}</div>
+    <div class="label">Vendor fix exists</div>
+  </div>
+</div>
+
+<h2>What this report does not cover</h2>
+<p class="prose">
+  {{ .Coverage }}
+</p>
+
+<h2>Findings</h2>
+{{ if not .Findings }}
+<div class="empty">
+  <p>No advisory matched any identified device in this inventory.</p>
+  <p>That is a result, not a clean bill of health. Check the coverage note above:
+     a device whose vendor or firmware could not be established was never compared
+     against anything.</p>
+</div>
+{{ else }}
+<input type="text" class="filter" id="filter" placeholder="Filter by device, vendor, advisory or CVE" hidden>
+<p class="filter-count" id="filter-count" hidden></p>
+<table id="findings">
+  <thead>
+    <tr>
+      <th scope="col">Tier</th>
+      <th scope="col">Device</th>
+      <th scope="col">Address</th>
+      <th scope="col">Advisory</th>
+      <th scope="col">CVSS</th>
+      <th scope="col">EPSS</th>
+      <th scope="col">Flags</th>
+    </tr>
+  </thead>
+  <tbody>
+  {{ range .Findings }}
+    <tr data-search="{{ .Search }}">
+      <td><span class="tier tier-{{ .Tier }}" title="{{ .TierMeaning }}">{{ .Tier }}</span></td>
+      <td>
+        <span class="device">
+          {{ .DeviceLabel }}
+          {{- with .DeviceSub }}<span class="sub">{{ . }}</span>{{ end }}
+        </span>
+        <details class="evidence">
+          <summary>Evidence</summary>
+          <div class="evidence-body">
+            <dl>
+              <dt>Device reported</dt><dd>{{ .AssetIdentity }}</dd>
+              <dt>Advisory lists</dt><dd>{{ .MatchedProduct }}</dd>
+              {{- with .VersionCheck }}
+              <dt>Version check</dt><dd>{{ . }}</dd>
+              {{- end }}
+              {{- with .AlsoMatched }}
+              <dt>Other nodes matched</dt><dd>{{ . }}</dd>
+              {{- end }}
+              {{- with .Remediation }}
+              <dt>Remediation</dt><dd>{{ . }}</dd>
+              {{- end }}
+              {{- with .Reference }}
+              <dt>Advisory URL</dt><dd>{{ . }}</dd>
+              {{- end }}
+            </dl>
+            {{- with .Reasons }}
+            <ol class="chain">
+              {{- range . }}
+              <li{{ if not .Passed }} class="failed"{{ end }}>{{ .Detail }}</li>
+              {{- end }}
+            </ol>
+            {{- end }}
+          </div>
+        </details>
+      </td>
+      <td class="address">{{ .Address }}</td>
+      <td>
+        <span class="advisory">{{ .AdvisoryID }}
+          {{- with .Title }}<span class="title">{{ . }}</span>{{ end }}
+        </span>
+      </td>
+      <td class="num">{{ .CVSS }}</td>
+      <td class="num">{{ .EPSS }}</td>
+      <td>
+        {{- if .KEV }}<span class="flag flag-kev" title="Known to be exploited in the wild">KEV</span>{{ end }}
+        {{- if .FixAvailable }}<span class="flag flag-fix" title="The advisory reports a vendor fix">FIX</span>{{ end }}
+      </td>
+    </tr>
+  {{ end }}
+  </tbody>
+</table>
+{{ end }}
+
+<footer>
+  <p><strong>Confirmed</strong> means the vendor, the product and the version all matched and the
+     version fell inside a range the advisory calls affected. <strong>Likely</strong> means the vendor
+     and product matched but the version was absent or could not be compared. <strong>Possible</strong>
+     means only the vendor and a product family matched, which is a lead rather than a conclusion.</p>
+  <p>Every row can be expanded to show the reasoning that produced it, including the checks that
+     failed. Verify before acting: this report is built from what devices said about themselves over
+     the network, and a device can be wrong about that.</p>
+  <p>{{ .Generator }}. This file contains no external references and makes no network requests.</p>
+</footer>
+
+</div>
+<script>
+// Progressive enhancement only. The table above is complete without this, which
+// matters because these files get archived and opened years later by whatever is
+// to hand. The filter reveals itself only once it works.
+(function () {
+  var input = document.getElementById("filter");
+  var count = document.getElementById("filter-count");
+  var table = document.getElementById("findings");
+  if (!input || !table || !count) { return; }
+
+  var rows = Array.prototype.slice.call(table.tBodies[0].rows);
+  input.hidden = false;
+  count.hidden = false;
+
+  function report(shown) {
+    count.textContent = shown === rows.length
+      ? "Showing all " + rows.length + " findings"
+      : "Showing " + shown + " of " + rows.length + " findings";
+  }
+
+  function apply() {
+    var needle = input.value.toLowerCase().trim();
+    var shown = 0;
+    for (var i = 0; i < rows.length; i++) {
+      var match = needle === "" || rows[i].getAttribute("data-search").indexOf(needle) !== -1;
+      rows[i].style.display = match ? "" : "none";
+      if (match) { shown++; }
+    }
+    report(shown);
+  }
+
+  input.addEventListener("input", apply);
+  report(rows.length);
+})();
+</script>
+</body>
+</html>
