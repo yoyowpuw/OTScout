@@ -1,0 +1,37 @@
+#!/bin/sh
+# Refuse to record an agent as a co-author.
+#
+# Some editors and agent harnesses append a Co-authored-by trailer naming their
+# own bot account to every commit they help produce. GitHub reads that trailer
+# and lists the bot on the repository's contributor page, so a tool ends up
+# credited alongside the people who did the work. There is no git setting that
+# turns it off, because the trailer is passed on the command line rather than
+# configured.
+#
+# This hook is the last point at which the line can be removed without
+# rewriting history. It runs after the message has been assembled and before the
+# commit object exists.
+#
+# Enable it with 'make hooks', which points core.hooksPath at this directory.
+
+set -e
+
+target="$1"
+[ -f "$target" ] || exit 0
+
+# Bot co-authors to strip. Human co-authors are left alone: crediting a person
+# who worked on a change is the feature this trailer exists for.
+pattern='^[[:space:]]*co-authored-by:[[:space:]]*(cursor|cursor agent|cursoragent|claude|copilot|github copilot|devin|codex)[[:space:]]*<[^>]*(cursor\.com|anthropic\.com|users\.noreply\.github\.com|openai\.com)>[[:space:]]*$'
+
+stripped="$target.stripped"
+grep -v -i -E "$pattern" "$target" > "$stripped" || true
+
+# Removing a trailer can leave the message ending in blank lines. Blank lines are
+# buffered and only emitted once more text follows, which drops the trailing ones
+# while keeping the paragraph breaks inside the body.
+awk '
+  /^[[:space:]]*$/ { blanks++; next }
+  { while (blanks-- > 0) print ""; blanks = 0; print }
+' "$stripped" > "$target"
+
+rm -f "$stripped"
