@@ -124,7 +124,7 @@ type vexTracking struct {
 }
 
 type vexGenerator struct {
-	Date   time.Time  `json:"date"`
+	Date   time.Time   `json:"date"`
 	Engine vexEngineID `json:"engine"`
 }
 
@@ -163,15 +163,15 @@ type vexProduct struct {
 }
 
 type vexVulnerable struct {
-	CVE          string            `json:"cve,omitempty"`
-	IDs          []vexExternalID   `json:"ids,omitempty"`
-	Title        string            `json:"title,omitempty"`
-	Notes        []vexNote         `json:"notes"`
-	ProductStatu vexProductStatus  `json:"product_status"`
-	Scores       []vexScore        `json:"scores,omitempty"`
-	Threats      []vexThreat       `json:"threats,omitempty"`
-	Remediations []vexRemediation  `json:"remediations"`
-	References   []vexReference    `json:"references,omitempty"`
+	CVE          string           `json:"cve,omitempty"`
+	IDs          []vexExternalID  `json:"ids,omitempty"`
+	Title        string           `json:"title,omitempty"`
+	Notes        []vexNote        `json:"notes"`
+	ProductStatu vexProductStatus `json:"product_status"`
+	Scores       []vexScore       `json:"scores,omitempty"`
+	Threats      []vexThreat      `json:"threats,omitempty"`
+	Remediations []vexRemediation `json:"remediations"`
+	References   []vexReference   `json:"references,omitempty"`
 }
 
 type vexExternalID struct {
@@ -185,8 +185,8 @@ type vexProductStatus struct {
 }
 
 type vexScore struct {
-	Products  []string      `json:"products"`
-	CVSSV3    *vexCVSSv3    `json:"cvss_v3,omitempty"`
+	Products []string   `json:"products"`
+	CVSSV3   *vexCVSSv3 `json:"cvss_v3,omitempty"`
 }
 
 type vexCVSSv3 struct {
