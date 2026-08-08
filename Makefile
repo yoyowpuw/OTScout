@@ -53,9 +53,13 @@ fmt-check:
 	@out="$$(gofmt -l .)"; \
 	if [ -n "$$out" ]; then echo "gofmt needed on:"; echo "$$out"; exit 1; fi
 
+# Built rather than run through 'go run': the binary that 'go run' leaves in the
+# build cache is refused by application control policies on some Windows
+# machines, and this target is on the path everybody runs before pushing.
 .PHONY: check-text
 check-text:
-	go run ./scripts/check-text
+	go build -o bin/check-text ./scripts/check-text
+	./bin/check-text
 
 .PHONY: tidy
 tidy:

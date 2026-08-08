@@ -340,6 +340,23 @@ contribution to this project and the only way a decoder change can be reviewed b
 someone who does not own the device it affects. See
 [docs/FIXTURES.md](docs/FIXTURES.md).
 
+Run this once per clone, then `make check` before pushing:
+
+```bash
+make hooks
+make check
+```
+
+`make hooks` installs two git hooks. One runs gofmt and the text rules on what
+you staged, so a formatting slip fails in a second rather than after a push. The
+other strips any `Co-authored-by` trailer naming a bot, because the contributors
+of this project are people.
+
+The text rules are ASCII only and no filler. `make check-text` lists any
+violation with a line, a column and what to write instead. Text quoted from an
+advisory can carry `check-text: allow` on the line. [AGENTS.md](AGENTS.md) has
+the reasoning.
+
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).

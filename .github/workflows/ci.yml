@@ -41,6 +41,9 @@ jobs:
       - name: go vet
         run: go vet ./...
 
+      - name: Text rules
+        run: go run ./scripts/check-text
+
       - name: Test
         run: go test ./... -race -count=1
 

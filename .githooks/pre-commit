@@ -1,0 +1,35 @@
+#!/bin/sh
+# Run the two checks that are cheap enough to run on every commit and that CI
+# fails on: gofmt and the text rules.
+#
+# Both judge the staged content rather than the working tree. A file can be
+# staged in part, and it is the staged half that becomes the commit.
+#
+# Enable with 'make hooks'.
+
+set -e
+
+fail=0
+
+staged_go=$(git diff --cached --name-only --diff-filter=ACM -- '*.go')
+
+if [ -n "$staged_go" ]; then
+	for file in $staged_go; do
+		if [ -n "$(git show ":$file" | gofmt -l)" ]; then
+			echo "gofmt needed: $file"
+			fail=1
+		fi
+	done
+fi
+
+# Built rather than run through 'go run', because the binary that 'go run'
+# places in the build cache is refused by application control policies on some
+# Windows machines, and a hook that cannot run blocks every commit.
+go build -o bin/check-text ./scripts/check-text
+./bin/check-text -staged || fail=1
+
+if [ "$fail" -ne 0 ]; then
+	echo
+	echo "Commit refused. Fix the above, or pass --no-verify if you know why this is wrong."
+	exit 1
+fi
